@@ -11,16 +11,20 @@ class Core:
     def __init__(self):
         self.image_reader = None
         self.fat_bot_sector = None
+        self.dir_parser = None
 
     def _init_image(self, path):
         self.image_reader = ImageReader(path)
 
     def _init_fat_boot_sector(self):
         self.fat_bot_sector = FatBootSector(self.image_reader)
+    def _init_dir_parser(self):
+        self.dir_parser = DirectoryParser(self.image_reader, [])
 
     def init(self, path):
         self._init_image(path)
         self._init_fat_boot_sector()
+        self._init_dir_parser()
 
     def close_reader(self):
         self.image_reader.close_reader()
@@ -204,7 +208,7 @@ class DirectoryParser:
 
     def _is_directory(self, offset):
         first_entry_byte = self.image_reader.get_data(offset, 1)
-        attr_entry_byte = self.image_reader.get_data(offset + 11, 1)  # need more tests
+        #attr_entry_byte = self.image_reader.get_data(offset + 11, 1)  # need more tests
         return not ((first_entry_byte in [b'\xe5', b'\x00']) or self._is_lfn(offset))
 
     def _is_end_lfn(self, offset, number):
@@ -222,19 +226,19 @@ class DirectoryParser:
                 temp_file_entry = FileEntryStructure()
                 self.File_entries.append(temp_file_entry)
                 temp_short_entry = DirEntryShortFat32()
-                temp_short_entry.parse_entry_data(self.image_reader, self.zone_offset)
+                temp_short_entry.parse_entry_data(self.image_reader, directory_offset +self.zone_offset, directory_offset, True)
                 temp_file_entry.set_dir(temp_short_entry)
                 self.next_offset = self.zone_offset + self.entry_size
                 self.zone_offset -= self.entry_size
                 lfn_number = 0
                 parsing_lfn = True
-                while (self.zone_offset >= 0 and parsing_lfn):
+                while (self.zone_offset >= -32 and parsing_lfn):
                     if (self._is_lfn(self.zone_offset)):
                         lfn_number += 1
                         if (not self._is_end_lfn(self.zone_offset, lfn_number)):
                             if (self._is_correct_lfn(self.zone_offset, lfn_number)):
                                 temp_ldir_entry = DirEntryLongFat32()
-                                temp_ldir_entry.parse_entry_data(self.image_reader, self.zone_offset)
+                                temp_ldir_entry.parse_entry_data(self.image_reader, directory_offset + self.zone_offset, directory_offset, True)
                                 temp_file_entry.append_ldir_entry(temp_ldir_entry)
                             else:
                                 parsing_lfn = False
@@ -242,7 +246,7 @@ class DirectoryParser:
                                 self.zone_offset = self.next_offset  # need except
                         else:
                             temp_ldir_entry = DirEntryLongFat32()
-                            temp_ldir_entry.parse_entry_data(self.image_reader, self.zone_offset)
+                            temp_ldir_entry.parse_entry_data(self.image_reader, directory_offset +self.zone_offset, directory_offset, True)
                             temp_file_entry.append_ldir_entry(temp_ldir_entry)
                             parsing_lfn = False
                             self.zone_offset = self.next_offset
@@ -250,6 +254,7 @@ class DirectoryParser:
                         parsing_lfn = False
                         temp_file_entry.clear_lfn()
                         self.zone_offset = self.next_offset
+                        DO_NOTHING  = 1
             else:
                 self.zone_offset += self.entry_size
 
@@ -286,7 +291,7 @@ class DirEntryShortFat32:
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
 
-    def parse_entry_data(self, image_reader, entry_start_offset):
+    def parse_entry_data(self, image_reader, entry_start_offset, old_offset = 0 , return_offset = False):
         image_reader.set_global_offset(entry_start_offset)
         self.dir_name = image_reader.get_data(0, 11)
         self.dir_attributes = image_reader.get_data(11, 1)
@@ -302,6 +307,8 @@ class DirEntryShortFat32:
                                                            2)  # 26 2 младшее слово первого кластера (склей их и будет тебе счастье
         self.dir_file_size = image_reader.get_data(28, 4, True)  # 28 4
         self.fat_entry_number = image_reader.convert_to_int(self.dir_first_cluster_low + self.dir_first_cluster_high, 4)
+        if (return_offset):
+            image_reader.set_global_offset(old_offset)
 
 
 class DirEntryLongFat32:
@@ -316,7 +323,7 @@ class DirEntryLongFat32:
         self.ldir_name3 = None  # 28 4
         self.entry_size = 32  # for fat 32
 
-    def parse_entry_data(self, image_reader, entry_start_offset):
+    def parse_entry_data(self, image_reader, entry_start_offset, old_offset = 0 , return_offset = False):
         image_reader.set_global_offset(entry_start_offset)
         self.ldir_order = image_reader.get_data(0, 1)  # 0 1
         self.ldir_name1 = image_reader.get_data(1, 10)  # 1 10
@@ -327,6 +334,8 @@ class DirEntryLongFat32:
         self.ldir_first_cluster_low = image_reader.get_data(26, 2)  # 26 2 must be zero
         self.ldir_name3 = image_reader.get_data(28, 4)  # 28 4
         self.entry_size = 32  # for fat 32
+        if(return_offset):
+            image_reader.set_global_offset(old_offset)
 
 
 c = Core()
@@ -334,5 +343,9 @@ c.init("..\.\dump (1).iso")
 print(c.fat_bot_sector.__dict__)
 print(c.fat_bot_sector.get_fat_offset())
 print(c.fat_bot_sector.get_root_dir_offset())
+c.dir_parser.parse_directory_on_offset(c.fat_bot_sector.get_root_dir_offset())
+print(len(c.dir_parser.File_entries))
+for x in c.dir_parser.File_entries:
+    print(x.dir.dir_name)
 
 c.close_reader()
