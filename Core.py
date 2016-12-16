@@ -1,5 +1,6 @@
 import mmap
 import struct
+import datetime
 
 """"reserved region class """
 """ bs - boot sector"""
@@ -309,6 +310,58 @@ class FileEntryStructure:
     def clear_lfn(self):
         self.ldir_list = []
 
+class HumanReadableFileView:
+    def __init__(self):
+        self.directory_name = None
+        self.date = None
+        self.time= None
+        self.attributes = None
+        self.access_time = None
+        self.access_date = None
+
+
+
+class DateTimeFormat:
+    def __init__(self, date_bytes,time_bytes):
+        self.date_bytes = date_bytes
+        self.time_bytes = time_bytes
+        self.year = None
+        self.day = None
+        self.month = None
+        self.seconds = None
+        self.minutes = None
+        self.hours = None
+        self.datetime = None
+        self.time = None
+        self.date = None
+        self._parse_date()
+        self._parse_time()
+        self._set_date_time()
+
+    def _set_date_time(self):
+        self.datetime = datetime.datetime(self.year,self.month, self.day, self.hours, self.minutes, self.seconds)
+        self.time = datetime.time(self.hours, self.minutes, self.seconds)
+        self.date = datetime.date(self.year, self.month, self.day)
+
+    def _count_data(self, from_in, to_in, where):
+        step = 1
+        sum = 0
+        for i in range(to_in, from_in -1, -1):
+            sum = where[i] * step
+            step *= 2
+        return sum
+
+    def _parse_date(self):
+        bin_list = [int(x) for x in bin(self.date_bytes)[2:]]
+        self.day = self._count_data(0, 4, bin_list)
+        self.month = self._count_data(5, 8, bin_list)
+        self.year = 1980 + self._count_data(9, 15, bin_list)
+
+    def _parse_time(self):
+        bin_list = [int(x) for x in bin(self.date_bytes)[2:]]
+        self.seconds = self._count_data(0,4, bin_list)
+        self.minutes = self._count_data(5,10, bin_list)
+        self.hours = self._count_data(11,15, bin_list)
 
 class DirEntryShortFat32:
     def __init__(self):
@@ -327,24 +380,26 @@ class DirEntryShortFat32:
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
 
+
     def parse_entry_data(self, image_reader, entry_start_offset, old_offset=0, return_offset=False):
         image_reader.set_global_offset(entry_start_offset)
         self.dir_name = image_reader.get_data(0, 11)
         self.dir_attributes = image_reader.get_data(11, 1)
         self.dir_nt_reserved = image_reader.get_data(12, 1)
         self.dir_create_time_tenth = image_reader.get_data(13, 1)  # 13 1
-        self.dir_create_time = image_reader.get_data(14, 2)  # 14 2
-        self.dir_create_date = image_reader.get_data(16, 2)  # 16 2
-        self.dir_last_access_date = image_reader.get_data(18, 2)  # 18 2
-        self.dir_first_cluster_high = image_reader.get_data(20, 2)  # 20 2 // старшее слово номера первого кластера
-        self.dir_write_time = image_reader.get_data(22, 2)  # 22 2 время последней записи , создание тоже запись
-        self.dir_write_date = image_reader.get_data(24, 2)  # 24 2 дата последней записи,создание файла тоже запись
-        self.dir_first_cluster_low = image_reader.get_data(26,
-                                                           2)  # 26 2 младшее слово первого кластера
+        self.dir_create_time = image_reader.get_data(14, 2,True)  # 14 2
+        self.dir_create_date = image_reader.get_data(16, 2,True)  # 16 2
+        self.dir_last_access_date = image_reader.get_data(18, 2,True)  # 18 2
+        self.dir_first_cluster_high = image_reader.get_data(20, 2,True)  # 20 2 // старшее слово номера первого кластера
+        self.dir_write_time = image_reader.get_data(22, 2, True)  # 22 2 время последней записи , создание тоже запись
+        self.dir_write_date = image_reader.get_data(24, 2, True)  # 24 2 дата последней записи,создание файла тоже запис
+        self.dir_first_cluster_low = image_reader.get_data(26, 2)  # 26 2 младшее слово первого кластера
         self.dir_file_size = image_reader.get_data(28, 4, True)  # 28 4
         self.fat_entry_number = image_reader.convert_to_int(self.dir_first_cluster_low + self.dir_first_cluster_high, 4)
         if return_offset:
             image_reader.set_global_offset(old_offset)
+
+
 
 
 class DirEntryLongFat32:
@@ -382,6 +437,6 @@ print(c.fat_bot_sector.get_root_dir_offset())
 c.dir_parser.parse_directory_on_offset(c.fat_bot_sector.get_root_dir_offset())
 print(len(c.dir_parser.File_entries))
 for x in c.dir_parser.File_entries:
-    print(x.dir.dir_name)
+    print(x.dir.dir_name.decode('cp866')) #cp866 важное
 
 c.close_reader()
