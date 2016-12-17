@@ -311,6 +311,13 @@ class FileEntryStructure:
 
     def clear_lfn(self):
         self.ldir_list = []
+    def get_short_name(self):
+        return self.dir.parse_name()
+    def get_long_name(self):
+        name = ''
+        for entries in self.ldir_list:
+            name += entries.parse_name_part()
+        return name.strip('￿')
 
 
 class HumanReadableFileView:
@@ -420,7 +427,8 @@ class DirEntryLongFat32:
         self.ldir_first_cluster_low = None  # 26 2 must be zero
         self.ldir_name3 = None  # 28 4
         self.entry_size = 32  # for fat 32
-
+    def parse_name_part(self):
+        return (self.ldir_name1 + self.ldir_name2 + self.ldir_name3).decode('utf-16')
     def parse_entry_data(self, image_reader, entry_start_offset, old_offset=0, return_offset=False):
         image_reader.set_global_offset(entry_start_offset)
         self.ldir_order = image_reader.get_data(0, 1)  # 0 1
@@ -445,9 +453,12 @@ print(c.fat_bot_sector.get_root_dir_offset())
 c.dir_parser.parse_directory_on_offset(c.fat_bot_sector.get_root_dir_offset())
 print(len(c.dir_parser.File_entries))
 for x in c.dir_parser.File_entries:
-    print(x.dir.parse_name())
-    for i in  x.ldir_list:
-        print("|---->", (i.ldir_name1 + i.ldir_name2 + i.ldir_name3).decode('utf-16'))
+    print(x.get_short_name())
+    if len(x.ldir_list):
+        print('---->',x.get_long_name() )
+    #print(x.dir.parse_name())
+    #for i in  x.ldir_list:
+    #    print("|---->", (i.ldir_name1 + i.ldir_name2 + i.ldir_name3).decode('utf-16'))
     #dir_name.decode('cp866'))  # cp866 важное
 
 c.close_reader()
