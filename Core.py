@@ -205,6 +205,23 @@ class DirectoryAttributes:
         self.attr_directory = None
         self.attr_archive = None
         self.attr_long_name = None
+    def __add_attr(self,str , symbol , field):
+        if (field):
+            str += symbol
+        else:
+            str += '_'
+        return str
+
+    def get_attributes_string(self):
+        str = ''
+        str = self.__add_attr(str, 'r', self.attr_read_only)
+        str = self.__add_attr(str, 'h', self.attr_hidden)
+        str = self.__add_attr(str, 's', self.attr_system)
+        str = self.__add_attr(str, 'v', self.attr_volume_id)
+        str = self.__add_attr(str, 'd', self.attr_directory)
+        str = self.__add_attr(str, 'a', self.attr_archive)
+        str = self.__add_attr(str, 'l', self.attr_long_name)
+        return str
 
     def parse_attributes(self, attr_byte):
         attr_byte = struct.unpack('<B', attr_byte)[0]
@@ -302,6 +319,7 @@ class FileEntryStructure:
     def __init__(self):
         self.ldir_list = []
         self.dir = None
+        self.human_readable_view = None
 
     def append_ldir_entry(self, ldir_entry):
         self.ldir_list.append(ldir_entry)
@@ -318,18 +336,38 @@ class FileEntryStructure:
         for entries in self.ldir_list:
             name += entries.parse_name_part()
         return name.strip('￿')
+    def set_user_representation(self):
+        self.human_readable_view = HumanReadableFileView()
+        self.human_readable_view.init(self)
+
 
 
 class HumanReadableFileView:
     def __init__(self):
         self.directory_name = None
-        self.date = None
-        self.time = None
+        self.create_datetime_format = None
         self.attributes = None
-        self.access_time = None
-        self.access_date = None
+        self.access_datetime_format = None
+        self.write_datetime_format = None
 
+    def init(self, file_object):
+        dir = file_object.dir
+        self.create_datetime_format = DateTimeFormat(dir.dir_create_date, dir.dir_create_time)
+        self.access_datetime_format = DateTimeFormat(dir.dir_last_access_date, 0)
+        self.write_datetime_format = DateTimeFormat(dir.dir_write_date, dir.dir_write_time)
+        self.attributes = DirectoryAttributes()
+        self.attributes.parse_attributes(dir.dir_attributes)
+        if len(file_object.ldir_list):
+            self.directory_name = file_object.get_long_name()
+        else:
+            self.directory_name = file_object.get_short_name().lower()
 
+    def to_string(self):
+        str = ''
+        str += self.write_datetime_format.date.isoformat() + ' ' +  self.write_datetime_format.time.isoformat() + '    '
+        str += self.attributes.get_attributes_string() + '     '
+        str += self.directory_name
+        return str
 class DateTimeFormat:
     def __init__(self, date_bytes, time_bytes):
         self.date_bytes = date_bytes
@@ -348,6 +386,10 @@ class DateTimeFormat:
         self._set_date_time()
 
     def _set_date_time(self):
+        if(self.month == 0): # exceptions
+            self.month = 1
+        if(self.day == 0):
+            self.day = 1
         self.datetime = datetime.datetime(self.year, self.month, self.day, self.hours, self.minutes, self.seconds)
         self.time = datetime.time(self.hours, self.minutes, self.seconds)
         self.date = datetime.date(self.year, self.month, self.day)
@@ -355,22 +397,35 @@ class DateTimeFormat:
     def _count_data(self, from_in, to_in, where):
         step = 1
         sum = 0
-        for i in range(to_in, from_in - 1, -1):
-            sum = where[i] * step
+        i = to_in
+        while(i >= from_in): #for i in range(to_in - 1 , from_in + 1, -1):
+            sum += where[i] * step
             step *= 2
+            i -= 1
         return sum
-
+    def _shift(self , lst):
+        len_lst = len(lst)
+        if (len_lst < 16):
+            lst.reverse()
+            while(len_lst < 16):
+                lst.append(0)
+                len_lst += 1
+            lst.reverse()
+        return lst
     def _parse_date(self):
         bin_list = [int(x) for x in bin(self.date_bytes)[2:]]
-        self.day = self._count_data(0, 4, bin_list)
-        self.month = self._count_data(5, 8, bin_list)
-        self.year = 1980 + self._count_data(9, 15, bin_list)
+        bin_list = self._shift(bin_list) # caution
+        #print(self.date_bytes, '  ', bin(self.date_bytes), '   ', bin_list)
+        self.year = 1980 + self._count_data(0, 6, bin_list)
+        self.month = self._count_data(7, 10, bin_list)
+        self.day = self._count_data(11, 15, bin_list)
 
     def _parse_time(self):
-        bin_list = [int(x) for x in bin(self.time_bytes)[2:]]
-        self.seconds = self._count_data(0, 4, bin_list)
+        bin_list = self._shift([int(x) for x in bin(self.time_bytes)[2:]])
+        #print(self.time_bytes, '  ',bin(self.time_bytes), '   ', bin_list)
+        self.hours = self._count_data(0, 4, bin_list)
         self.minutes = self._count_data(5, 10, bin_list)
-        self.hours = self._count_data(11, 15, bin_list)
+        self.seconds = 2 * self._count_data(11, 15, bin_list)
 
 
 class DirEntryShortFat32:
@@ -453,9 +508,10 @@ print(c.fat_bot_sector.get_root_dir_offset())
 c.dir_parser.parse_directory_on_offset(c.fat_bot_sector.get_root_dir_offset())
 print(len(c.dir_parser.File_entries))
 for x in c.dir_parser.File_entries:
-    print(x.get_short_name())
-    if len(x.ldir_list):
-        print('---->',x.get_long_name() )
+    x.set_user_representation()
+    print(x.human_readable_view.to_string())
+    #if len(x.ldir_list):
+    #    print('---->',x.get_long_name() )
     #print(x.dir.parse_name())
     #for i in  x.ldir_list:
     #    print("|---->", (i.ldir_name1 + i.ldir_name2 + i.ldir_name3).decode('utf-16'))
