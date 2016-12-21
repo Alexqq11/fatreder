@@ -36,21 +36,6 @@ class Core:
 
     pass
 
-"""""""""
-c = Core()
-c.init("..\.\dump (1).iso")
-print(c.fat_bot_sector.__dict__)
-print(c.fat_bot_sector.get_fat_offset())
-print(c.fat_bot_sector.get_root_dir_offset())
-
-c.dir_parser.parse_directory_on_offset(c.fat_bot_sector.get_root_dir_offset())
-print(len(c.dir_parser.File_entries))
-
-for x in c.dir_parser.File_entries:
-    x.set_user_representation()
-    print(x.human_readable_view.to_string())
-c.close_reader()
-"""
 c = Core()
 c.init("..\.\dump (1).iso")
 c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
@@ -59,12 +44,4 @@ print(len(c.dir_parser.File_entries))
 for x in c.dir_parser.File_entries:
     x.set_user_representation()
     print(x.human_readable_view.to_string())
-
-    # if len(x.ldir_list):
-    #    print('---->',x.get_long_name() )
-    # print(x.dir.parse_name())
-    # for i in  x.ldir_list:
-    #    print("|---->", (i.ldir_name1 + i.ldir_name2 + i.ldir_name3).decode('utf-16'))
-    # dir_name.decode('cp866'))  # cp866 важное
-
 c.close_reader()
