@@ -30,7 +30,14 @@ class ImageReader:
     def convert_to_int(self, data, size):
         return struct.unpack(self._get_parse_mod(size), data)[0]
 
-    def get_data(self, local_offset, size, convert_integer=False):
+    def get_data_global(self, offset, size,convert_integer=False):
+        self.image.seek(offset)
+        buffer = self.image.read(size)
+        if convert_integer:
+            buffer = self.convert_to_int(buffer, size)  # struct.unpack(self._get_parse_mod(size), buffer)[0]
+        return buffer
+
+    def get_data_local(self, local_offset, size, convert_integer=False):
         self.image.seek(self.file_global_offset + local_offset)
         buffer = self.image.read(size)
         if convert_integer:

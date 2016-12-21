@@ -64,10 +64,18 @@ class DateTimeFormat:
         self._set_date_time()
 
     def _set_date_time(self):
-        if self.month == 0:  # exceptions
+
+        if self.month == 0 or self.month > 12:  # exceptions
             self.month = 1
         if self.day == 0:
             self.day = 1
+        if self.hours > 23:
+            self.hours = 23
+        if self.minutes > 59:
+            self.minutes = 59
+        if self.seconds > 59:
+            self.seconds =59
+
         self.datetime = datetime.datetime(self.year, self.month, self.day, self.hours, self.minutes, self.seconds)
         self.time = datetime.time(self.hours, self.minutes, self.seconds)
         self.date = datetime.date(self.year, self.month, self.day)
