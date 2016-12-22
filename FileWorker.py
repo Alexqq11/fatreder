@@ -1,5 +1,6 @@
 import FileEntryStructure as fs_struct
-
+import DirectoriesStructures as dir
+import copy
 
 class FatTripper:  # unsafety with out file image error checking
     def __init__(self, core, fat_offsets):
@@ -36,7 +37,44 @@ class FatTripper:  # unsafety with out file image error checking
                 #  fat_entry = data
 
         return clusters_list
+class FileWritePlaceFinder():
+    def __init__(self, core):
+        self.core = core
+        self.image_reader = core.image_reader
+        self.entry_size = 32
+    def find_place_for_entry(self, directory_cluster, entries_number):
+        directory_offset = self.core.fat_bot_sector.get_cluster_offset()
+        for
 
+
+class DataParser():
+    def __init__(self, core):
+        self.core = core
+        self.image_reader = core.image_reader
+        self.data_clusters_offsets_list = []
+        self.cluster_size = None
+        self.buffer = []
+
+    def _set_default_settings(self):
+        self.data_clusters_offsets_list = []
+        self.cluster_size = None
+        self.buffer = []
+    def _set_work_settings(self, file_cluster_number):
+        self.data_clusters_offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(file_cluster_number)
+        self.cluster_size = self.core.fat_bot_sector.get_cluster_size()
+    def  parse_buffer(self, file_cluster_number):
+        self._set_default_settings()
+        self._set_work_settings(file_cluster_number)
+        for cluster_offset in self.data_clusters_offsets_list:
+            self.buffer.append(self.image_reader.get_data_global(cluster_offset, self.cluster_size))
+        buffer_link = self.buffer
+        self._set_default_settings()
+        return buffer_link
+    def parse_non_buffer(self, file_cluster_number):
+        self._set_default_settings()
+        self._set_work_settings(file_cluster_number)
+        for cluster_offset in self.data_clusters_offsets_list:
+            yield return self.image_reader.get_data_global(cluster_offset, self.cluster_size)
 
 class DirectoryParser:
     def __init__(self, core):
@@ -94,6 +132,17 @@ class DirectoryParser:
             # file_entry.clear_lfn()
         return lfn_status and correct_lfn_status, file_entry, end_status, previous_entry_number
 
+    def reset_to_default_settings(self):
+        self.File_entries = []
+        self.offsets_list = None
+        self.entry_size = 32
+        self.current_offset = 0
+        self.current_cluster_offset_index = 0
+        self.current_next = 0
+        self.current_next_swapped = True
+        self.current_next_set = False
+        self.current_parse_lfn = False
+
     def nio_offset_manager(self, parsing_lfn):
         if parsing_lfn:
             if not self.current_next_set:
@@ -130,11 +179,9 @@ class DirectoryParser:
                 self.current_offset += self.entry_size
 
     def nio_parse_directory(self, directory_offset):
+        self.reset_to_default_settings()
         dir_cluster_number = self.core.fat_bot_sector.get_cluster_number(directory_offset)
         self.offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(dir_cluster_number)
-        self.current_cluster_offset_index = 0
-        self.current_next_swapped = True
-        self.current_next = 0
         self.current_offset = directory_offset
         cache = None
         while self.current_cluster_offset_index < len(self.offsets_list):
@@ -147,3 +194,6 @@ class DirectoryParser:
                 cache = self.nio_parse_short_entry(self.current_offset)
                 self.current_parse_lfn = cache[0]
             self.nio_offset_manager(self.current_parse_lfn)
+        file_entries = self.File_entries
+        self.reset_to_default_settings()
+        return dir.Directory(file_entries)

@@ -38,10 +38,16 @@ class Core:
 
 c = Core()
 c.init("..\.\dump (1).iso")
-c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
-print(len(c.dir_parser.File_entries))
-
+dir  = c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
+for file in dir.files:
+    #print(file)
+    dir.files[file].set_user_representation()
+    print(dir.files[file].human_readable_view.to_string())
+#print(dir.files)
+"""""""""
 for x in c.dir_parser.File_entries:
     x.set_user_representation()
     print(x.human_readable_view.to_string())
+"""""
 c.close_reader()
+

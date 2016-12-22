@@ -23,7 +23,13 @@ class FileEntryStructure:
         name = ''
         for entries in self.ldir_list:
             name += entries.parse_name_part()
-        return name.strip('￿')
+        return name.strip('\0 ￿')
+
+    def get_name(self):
+        if len(self.ldir_list):
+            return  self.get_long_name()
+        else:
+            return  self.get_short_name().lower()
 
     def set_user_representation(self):
         self.human_readable_view = HumanReadableFileView()
@@ -50,10 +56,7 @@ class HumanReadableFileView:
         self.write_datetime_format = meta.DateTimeFormat(directory.dir_write_date, directory.dir_write_time)
         self.attributes = meta.DirectoryAttributes()
         self.attributes.parse_attributes(directory.dir_attributes)
-        if len(file_object.ldir_list):
-            self.directory_name = file_object.get_long_name()
-        else:
-            self.directory_name = file_object.get_short_name().lower()
+        self.directory_name = file_object.get_name()
 
     def to_string(self):
         file_representation = ''
