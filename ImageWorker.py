@@ -29,6 +29,9 @@ class ImageReader:
 
     def convert_to_int(self, data, size):
         return struct.unpack(self._get_parse_mod(size), data)[0]
+    def set_data_global(self, offset, data):
+        self.image.seek(offset)
+        self.image.write(data)
 
     def get_data_global(self, offset, size,convert_integer=False):
         self.image.seek(offset)

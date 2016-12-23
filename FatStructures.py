@@ -43,7 +43,8 @@ class FatBootSector:
             current_sector = self.bpb_reserved_region_sectors_count + self.bpb_fat_size_32 * fat_number
             fats_offsets.append(current_sector * self.bpb_bytes_per_sector)
         return fats_offsets
-
+    def get_fat_size(self):
+        return (self.get_root_dir_offset() - self.get_fat_offset()) // self.bpb_number_fats
     def get_root_dir_offset(self):
         return self.get_fat_offset() + self.bpb_number_fats * self.bpb_fat_size_32 * self.bpb_bytes_per_sector
 

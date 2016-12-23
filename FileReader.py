@@ -1,51 +1,7 @@
 import FileEntryStructure as fs_struct
 import DirectoriesStructures as dir
+import struct
 import copy
-
-class FatTripper:  # unsafety with out file image error checking
-    def __init__(self, core, fat_offsets):
-        self.core = core
-        self.image_reader = core.image_reader
-        self.fat_offsets = fat_offsets
-        self.current_fat_offset = fat_offsets[0]
-        self.entry_size = 4
-
-    def _get_fat_entry_local_offset(self, fat_entry):
-        return fat_entry * self.entry_size
-
-    def _get_fat_entry_global_offset(self, fat_entry):
-        return self._get_fat_entry_local_offset(fat_entry) + self.current_fat_offset
-
-    def get_file_clusters_offsets_list(self, fat_entry):
-        return [self.core.fat_bot_sector.get_cluster_offset(cls) for cls in self.get_file_clusters_list(fat_entry)]
-
-    def get_file_clusters_list(self, fat_entry):
-        end_of_file = False
-        clusters_list = []
-        self.image_reader.set_global_offset(0)
-        current_block = fat_entry
-        while not end_of_file:
-            clusters_list.append(current_block)
-            data = self.image_reader.get_data_local(self._get_fat_entry_global_offset(current_block), self.entry_size,
-                                                    True)
-            if data >= 268435448:
-                end_of_file = True
-            else:
-                current_block = data
-                # else:
-                #   clusters_list.append(data)
-                #  fat_entry = data
-
-        return clusters_list
-class FileWritePlaceFinder():
-    def __init__(self, core):
-        self.core = core
-        self.image_reader = core.image_reader
-        self.entry_size = 32
-    def find_place_for_entry(self, directory_cluster, entries_number):
-        directory_offset = self.core.fat_bot_sector.get_cluster_offset()
-        for
-
 
 class DataParser():
     def __init__(self, core):
@@ -70,11 +26,12 @@ class DataParser():
         buffer_link = self.buffer
         self._set_default_settings()
         return buffer_link
+
     def parse_non_buffer(self, file_cluster_number):
         self._set_default_settings()
         self._set_work_settings(file_cluster_number)
         for cluster_offset in self.data_clusters_offsets_list:
-            yield return self.image_reader.get_data_global(cluster_offset, self.cluster_size)
+            yield self.image_reader.get_data_global(cluster_offset, self.cluster_size) #???
 
 class DirectoryParser:
     def __init__(self, core):

@@ -1,7 +1,7 @@
 import FatStructures as fat
-import FileWorker as fw
+import FileReader as fw
 import ImageWorker as image
-
+import FatTableWorker as ftw
 """"reserved region class """
 """ bs - boot sector"""
 """"bpb bios parameter block """
@@ -20,7 +20,7 @@ class Core:
     def _init_fat_boot_sector(self):
         self.fat_bot_sector = fat.FatBootSector(self.image_reader)
     def _init_fat_tripper(self):
-        self.fat_tripper = fw.FatTripper(self, self.fat_bot_sector.get_fat_offsets_list())
+        self.fat_tripper = ftw.FatTripper(self, self.fat_bot_sector.get_fat_offsets_list())
 
     def _init_dir_parser(self):
         self.dir_parser = fw.DirectoryParser(self)
