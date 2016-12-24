@@ -19,7 +19,6 @@ class FileWriter():
         extended_cluster = clusters[len(clusters) - 1]
         self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)
 
-
     def find_place_for_entry_on_current_cluster(self, directory_cluster, entries_number):
         directory_offset = self.core.fat_bot_sector.get_cluster_offset()
         offset = directory_offset
@@ -52,3 +51,19 @@ class FileWriter():
             if cache[0]:
                 break
         return cache
+
+    def delete_file_entry(self):
+        pass
+
+    def delete_fat_chain(self):
+        pass
+    def delete_file_with_clean(self):
+        pass
+
+    def delete_directory_with_clean(self):
+        pass
+
+    def delete_file_without_clean(self):
+        pass
+    def delete_directory_without_clean(self):
+        pass

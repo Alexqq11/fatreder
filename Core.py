@@ -2,6 +2,7 @@ import FatStructures as fat
 import FileReader as fw
 import ImageWorker as image
 import FatTableWorker as ftw
+import FileSystemWalker as FSW
 """"reserved region class """
 """ bs - boot sector"""
 """"bpb bios parameter block """
@@ -13,6 +14,7 @@ class Core:
         self.fat_bot_sector = None
         self.fat_tripper = None
         self.dir_parser = None
+        self.file_system_utils = None
 
     def _init_image(self, path):
         self.image_reader = image.ImageReader(path)
@@ -24,12 +26,15 @@ class Core:
 
     def _init_dir_parser(self):
         self.dir_parser = fw.DirectoryParser(self)
+    def init_FSW(self):
+        self.file_system_utils = FSW.FileSystemUtil(self)
 
     def init(self, path):
         self._init_image(path)
         self._init_fat_boot_sector()
         self._init_fat_tripper()
-        self._init_dir_parser()
+        #self._init_dir_parser
+        self.init_FSW()
 
     def close_reader(self):
         self.image_reader.close_reader()
@@ -38,11 +43,49 @@ class Core:
 
 c = Core()
 c.init("..\.\dump (1).iso")
-dir  = c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
-for file in dir.files:
+
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+print('<------------------------------------------------------>')
+c.file_system_utils.change_directory('архЭВМ')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+print('<------------------------------------------------------>')
+c.file_system_utils.change_directory('Arch')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+print('<------------------------------------------------------>')
+c.file_system_utils.change_directory('/архЭВМ')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+print('<------------------------------------------------------>')
+c.file_system_utils.change_directory('/архЭВМ/')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+print('<------------------------------------------------------>')
+c.file_system_utils.change_directory('/')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+print('<------------------------------------------------------>')
+c.file_system_utils.change_directory('./')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+c.file_system_utils.change_directory('../')
+info = c.file_system_utils.get_working_directory_information()
+for entry in info:
+    print(entry)
+#dir  = c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
+#for file in dir.files:
     #print(file)
-    dir.files[file].set_user_representation()
-    print(dir.files[file].human_readable_view.to_string())
+ #   dir.files[file].set_user_representation()
+  #  print(dir.files[file].human_readable_view.to_string())
 #print(dir.files)
 """""""""
 for x in c.dir_parser.File_entries:

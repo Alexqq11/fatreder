@@ -1,10 +1,10 @@
 import FileEntryMetaData as meta
-
+import struct
 
 class FileEntryStructure:
     def __init__(self):
         self.ldir_list = []
-        self.dir = None
+        self.dir = None #DirEntryShortFat32()
         self.human_readable_view = None
 
     def append_ldir_entry(self, ldir_entry):
@@ -13,9 +13,10 @@ class FileEntryStructure:
     def set_dir(self, dir_entry):
         self.dir = dir_entry
 
-    def clear_lfn(self):
-        self.ldir_list = []
-
+    #def clear_lfn(self):
+     #   self.ldir_list = []
+    def get_content_cluster_number(self):
+        return self.dir.parse_cluster_number()
     def get_short_name(self):
         return self.dir.parse_name()
 
@@ -83,6 +84,8 @@ class DirEntryShortFat32:
         self.dir_file_size = None  # 28 4
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
+    def parse_cluster_number(self):
+        return struct.unpack('<I',self.dir_first_cluster_low + self.dir_first_cluster_high)[0]
 
     def parse_name(self):
         processing_string = self.dir_name.decode('cp866')

@@ -55,7 +55,7 @@ class FatBootSector:
 
     def get_cluster_number(self, cluster_offset):
         number = cluster_offset - self.get_root_dir_offset()
-        number = number // (self.bpb_sectors_per_cluster * self.bpb_sectors_per_cluster) + 2
+        number = number // (self.bpb_sectors_per_cluster * self.bpb_bytes_per_sector) + 2
         return number
 
     def _read_fat_boot_sector(self):
