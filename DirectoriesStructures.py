@@ -30,6 +30,8 @@ class Directory:
         elif key == 'by_name_dir':
             func = lambda value, iterable : value.lower() == iterable.get_name().lower() and \
                                             iterable.human_readable_view.attributes.attr_directory
+        elif key == 'by_name':
+            func = lambda value, iterable : value.lower() == iterable.get_name().lower()
         for entry in self.entries_list:
             if func(value, entry):
                 return entry

@@ -57,3 +57,6 @@ class FileSystemUtil:
             files.set_user_representation()
             info.append(files.human_readable_view.to_string())
         return info
+
+    def get_file_information(self, name):
+        return self.working_directory.find(name,"by_name").human_readable_view.to_string()

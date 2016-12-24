@@ -85,7 +85,10 @@ class DirEntryShortFat32:
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
     def parse_cluster_number(self):
-        return struct.unpack('<I',self.dir_first_cluster_low + self.dir_first_cluster_high)[0]
+        value = struct.unpack('<I',self.dir_first_cluster_low + self.dir_first_cluster_high)[0]
+        if value == 0:
+            value = 2
+        return value
 
     def parse_name(self):
         processing_string = self.dir_name.decode('cp866')
