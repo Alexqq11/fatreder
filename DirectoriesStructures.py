@@ -17,7 +17,10 @@ class Directory:
             entry.set_user_representation()
     def get_file_cluster_number(self, file_name): #todo make it more universal in future
         if file_name in self.files:
-            return True, self.files[file_name].get_content_cluster_number()
+            value = self.files[file_name].get_content_cluster_number()
+            if value == 0:
+                value = 2
+            return True, value
         else:
             return False, 2
     def find(self,value,key):# todo it with func dict

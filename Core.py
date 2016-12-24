@@ -73,14 +73,15 @@ info = c.file_system_utils.get_working_directory_information()
 for entry in info:
     print(entry)
 print('<------------------------------------------------------>')
-c.file_system_utils.change_directory('./')
+c.file_system_utils.change_directory('/архЭВм/Конспекты от Артура/')
 info = c.file_system_utils.get_working_directory_information()
 for entry in info:
     print(entry)
+print(c.file_system_utils.calculate_directory_path())
 c.file_system_utils.change_directory('../')
-info = c.file_system_utils.get_working_directory_information()
-for entry in info:
-    print(entry)
+print(c.file_system_utils.calculate_directory_path())
+c.file_system_utils.change_directory('../')
+print(c.file_system_utils.calculate_directory_path())
 #dir  = c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
 #for file in dir.files:
     #print(file)
