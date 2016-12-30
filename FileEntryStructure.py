@@ -1,22 +1,33 @@
-import FileEntryMetaData as meta
 import struct
+
+import FileEntryMetaData as meta
+
 
 class FileEntryStructure:
     def __init__(self):
         self.ldir_list = []
-        self.dir = None #DirEntryShortFat32()
+        self.dir = None  # DirEntryShortFat32()
         self.human_readable_view = None
+        self.short_entry_global_offset = None
+        self.entry_start = None
+        self.entry_size = None
 
     def append_ldir_entry(self, ldir_entry):
         self.ldir_list.append(ldir_entry)
 
-    def set_dir(self, dir_entry):
+    def set_dir(self, dir_entry, global_offset=0):
         self.dir = dir_entry
+        self.short_entry_global_offset = global_offset
 
-    #def clear_lfn(self):
-     #   self.ldir_list = []
+    def count_start_entry_offset_and_size(self):
+        self.entry_start = self.short_entry_global_offset - 32 * len(self.ldir_list)
+        self.entry_size = 32 * len(self.ldir_list) + 32
+        # def clear_lfn(self):
+        #   self.ldir_list = []
+
     def get_content_cluster_number(self):
         return self.dir.parse_cluster_number()
+
     def get_short_name(self):
         return self.dir.parse_name()
 
@@ -28,11 +39,12 @@ class FileEntryStructure:
 
     def get_name(self):
         if len(self.ldir_list):
-            return  self.get_long_name()
+            return self.get_long_name()
         else:
-            return  self.get_short_name().lower()
+            return self.get_short_name().lower()
 
     def set_user_representation(self):
+        self.count_start_entry_offset_and_size()
         self.human_readable_view = HumanReadableFileView()
         self.human_readable_view.init(self)
 
@@ -84,8 +96,9 @@ class DirEntryShortFat32:
         self.dir_file_size = None  # 28 4
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
+
     def parse_cluster_number(self):
-        value = struct.unpack('<I',self.dir_first_cluster_low + self.dir_first_cluster_high)[0]
+        value = struct.unpack('<I', self.dir_first_cluster_low + self.dir_first_cluster_high)[0]
         if value == 0:
             value = 2
         return value

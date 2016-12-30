@@ -6,11 +6,20 @@ class ImageReader:
     def __init__(self, path):
         self.image = None
         self.file_stream = None
-        self._set_mapped_image(path)
+        self.path = path
+        self._set_mapped_image()
         self.file_global_offset = 0
+        self.readonly = None
 
-    def _set_mapped_image(self, path):
-        with open(path, "r+b") as f:
+    def _set_mapped_image(self, params="r+b"):
+        if self.image:
+            self.close_reader()
+        if params == "r+b":
+            self.readonly = True
+        elif params == "wb":
+            self.readonly = False
+
+        with open(self.path, params) as f:
             self.file_stream = f
             self.image = mmap.mmap(f.fileno(), 0)
 
@@ -29,11 +38,16 @@ class ImageReader:
 
     def convert_to_int(self, data, size):
         return struct.unpack(self._get_parse_mod(size), data)[0]
+
     def set_data_global(self, offset, data):
+        if self.readonly:
+            self._set_mapped_image("wb")
         self.image.seek(offset)
         self.image.write(data)
 
-    def get_data_global(self, offset, size,convert_integer=False):
+    def get_data_global(self, offset, size, convert_integer=False):
+        if not self.readonly:
+            self._set_mapped_image()
         self.image.seek(offset)
         buffer = self.image.read(size)
         if convert_integer:
@@ -41,6 +55,8 @@ class ImageReader:
         return buffer
 
     def get_data_local(self, local_offset, size, convert_integer=False):
+        if not self.readonly:
+            self._set_mapped_image()
         self.image.seek(self.file_global_offset + local_offset)
         buffer = self.image.read(size)
         if convert_integer:
@@ -50,3 +66,5 @@ class ImageReader:
     def close_reader(self):
         self.image.close()
         self.file_stream.close()
+        self.image = None
+        self.file_stream = None

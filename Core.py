@@ -1,8 +1,9 @@
 import FatStructures as fat
-import FileReader as fw
-import ImageWorker as image
 import FatTableWorker as ftw
+import FileReader as fw
 import FileSystemWalker as FSW
+import ImageWorker as image
+
 """"reserved region class """
 """ bs - boot sector"""
 """"bpb bios parameter block """
@@ -21,11 +22,13 @@ class Core:
 
     def _init_fat_boot_sector(self):
         self.fat_bot_sector = fat.FatBootSector(self.image_reader)
+
     def _init_fat_tripper(self):
         self.fat_tripper = ftw.FatTripper(self, self.fat_bot_sector.get_fat_offsets_list())
 
     def _init_dir_parser(self):
         self.dir_parser = fw.DirectoryParser(self)
+
     def init_FSW(self):
         self.file_system_utils = FSW.FileSystemUtil(self)
 
@@ -33,18 +36,22 @@ class Core:
         self._init_image(path)
         self._init_fat_boot_sector()
         self._init_fat_tripper()
-        #self._init_dir_parser
+        # self._init_dir_parser
         self.init_FSW()
 
     def close_reader(self):
         self.image_reader.close_reader()
+
     pass
+
 
 c = Core()
 
 inp = input("Path to image: ")
-c.init(inp) # "..\.\dump (1).iso")
-while(True):
+c.init(inp)  # "..\.\dump (1).iso")
+# todo use try except for keys interrypt
+first_call_cat = True
+while (True):
     inp = input("]>")
     args = [x for x in inp.split()]
     if (args[0].lower() == 'cd'):
@@ -56,11 +63,18 @@ while(True):
     elif (args[0].lower() == 'pwd'):
         print(c.file_system_utils.calculate_directory_path())
     elif (args[0].lower() == 'info'):
-        print(c.file_system_utils.get_file_information("архЭВМ"))
+        print(c.file_system_utils.get_file_information(args[1]))
     elif (args[0].lower() == 'help'):
         print("cd , ls . pwd, info , exit, help")
     elif (args[0].lower() == 'exit'):
         break
+    elif (args[0].lower() == 'cat'):
+        data = c.file_system_utils.cat_data(args[1])
+        i = iter(data)
+        encoding = 'utf-8'
+        if len(args) == 3:
+            encoding = args[2]
+        print(next(i).decode(encoding))
     else:
         print('command not found')
 """""""""
@@ -77,16 +91,15 @@ for entry in info:
 print(c.file_system_utils.calculate_directory_path())
 print(c.file_system_utils.get_file_information("архЭВМ"))
 """
-#dir  = c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
-#for file in dir.files:
-    #print(file)
- #   dir.files[file].set_user_representation()
-  #  print(dir.files[file].human_readable_view.to_string())
-#print(dir.files)
+# dir  = c.dir_parser.nio_parse_directory(c.fat_bot_sector.get_root_dir_offset())
+# for file in dir.files:
+# print(file)
+#   dir.files[file].set_user_representation()
+#  print(dir.files[file].human_readable_view.to_string())
+# print(dir.files)
 """""""""
 for x in c.dir_parser.File_entries:
     x.set_user_representation()
     print(x.human_readable_view.to_string())
 """""
 c.close_reader()
-er

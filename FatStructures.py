@@ -31,6 +31,7 @@ class FatBootSector:
         self.bs_file_system_type = None  # 82 8
         self._read_fat_boot_sector()
 
+    # @property заебатая шняга.
     def get_cluster_size(self):  # use it
         return self.bpb_sectors_per_cluster * self.bpb_bytes_per_sector
 
@@ -43,8 +44,10 @@ class FatBootSector:
             current_sector = self.bpb_reserved_region_sectors_count + self.bpb_fat_size_32 * fat_number
             fats_offsets.append(current_sector * self.bpb_bytes_per_sector)
         return fats_offsets
+
     def get_fat_size(self):
         return (self.get_root_dir_offset() - self.get_fat_offset()) // self.bpb_number_fats
+
     def get_root_dir_offset(self):
         return self.get_fat_offset() + self.bpb_number_fats * self.bpb_fat_size_32 * self.bpb_bytes_per_sector
 

@@ -1,7 +1,6 @@
-import FileEntryStructure as fs_struct
 import DirectoriesStructures as dir
-import struct
-import copy
+import FileEntryStructure as fs_struct
+
 
 class DataParser():
     def __init__(self, core):
@@ -15,10 +14,12 @@ class DataParser():
         self.data_clusters_offsets_list = []
         self.cluster_size = None
         self.buffer = []
+
     def _set_work_settings(self, file_cluster_number):
         self.data_clusters_offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(file_cluster_number)
         self.cluster_size = self.core.fat_bot_sector.get_cluster_size()
-    def  parse_buffer(self, file_cluster_number):
+
+    def parse_buffer(self, file_cluster_number):
         self._set_default_settings()
         self._set_work_settings(file_cluster_number)
         for cluster_offset in self.data_clusters_offsets_list:
@@ -31,7 +32,8 @@ class DataParser():
         self._set_default_settings()
         self._set_work_settings(file_cluster_number)
         for cluster_offset in self.data_clusters_offsets_list:
-            yield self.image_reader.get_data_global(cluster_offset, self.cluster_size) #???
+            yield self.image_reader.get_data_global(cluster_offset, self.cluster_size)  # ???
+
 
 class DirectoryParser:
     def __init__(self, core):
@@ -69,7 +71,7 @@ class DirectoryParser:
             self.File_entries.append(file_entry)
             short_entry = fs_struct.DirEntryShortFat32()
             short_entry.parse_entry_data(self.image_reader, entry_global_offset, return_offset=True)
-            file_entry.set_dir(short_entry)
+            file_entry.set_dir(short_entry, entry_global_offset)
         return status, file_entry, False, 0
 
     def nio_is_end_lfn(self, offset, number):

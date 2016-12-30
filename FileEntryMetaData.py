@@ -74,7 +74,7 @@ class DateTimeFormat:
         if self.minutes > 59:
             self.minutes = 59
         if self.seconds > 59:
-            self.seconds =59
+            self.seconds = 59
 
         self.datetime = datetime.datetime(self.year, self.month, self.day, self.hours, self.minutes, self.seconds)
         self.time = datetime.time(self.hours, self.minutes, self.seconds)
