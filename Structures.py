@@ -14,6 +14,8 @@ class ShortDirectoryEntryStructure:
         self.dir_file_size = None  # 28 4
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
+
+
 class FileEntryStructure:
     def __init(self):
         self._long_name = None
@@ -25,6 +27,8 @@ class FileEntryStructure:
         self._data_offset = None
         self._data_cluster = None
         self._entries_offsets = None
+
+
 class LongDirectoryEntryStructure:
     def __init__(self):
         self.ldir_order = None  # 0 1
@@ -37,6 +41,7 @@ class LongDirectoryEntryStructure:
         self.ldir_name3 = None  # 28 4
         self.entry_size = 32  # for fat 32
 
+
 class FSInfoStructure:
     def __init__(self):
         self.fsi_lead_signature = None  # 0 4
@@ -46,6 +51,7 @@ class FSInfoStructure:
         self.fsi_next_free = None  # 492 4
         self.fsi_reserved2 = None  # 496 12
         self.fsi_trail_signature = None  # 508 4
+
 
 class FatBootSectorStructure:
     def __init__(self):
@@ -77,5 +83,3 @@ class FatBootSectorStructure:
         self.bs_volume_id = None  # 67 4
         self.bs_volume_label = None  # 71 11
         self.bs_file_system_type = None  # 82 8
-
-

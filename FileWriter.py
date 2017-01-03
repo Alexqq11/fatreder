@@ -19,21 +19,21 @@ class FileWriter():
         extended_cluster = clusters[len(clusters) - 1]
         self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)
 
-    def find_place_for_entry_on_current_cluster(self, directory_cluster, entries_number):
+    def find_place_for_entry_on_current_cluster(self, entries_number):# something wrong here
         directory_offset = self.core.fat_bot_sector.calc_cluster_offset()
         offset = directory_offset
         count = 0
         start_offset = 0
         start_offset_set = False
         cache = (False, [])
-        while (offset < self.cluster_size + directory_offset):
+        while offset < self.cluster_size + directory_offset:
             check_byte = self.image_reader.get_data_global(offset, 1)
             if check_byte in [b'\x00', b'\xe5']:
                 if not start_offset_set:
                     start_offset = offset
                     start_offset_set = True
                 count += 1
-                if (count == entries_number):
+                if count == entries_number:
                     cache = (True, [offset for offset in range(start_offset, offset + 1, self.entry_size)])
                     break
             else:
@@ -47,7 +47,7 @@ class FileWriter():
         clusters = self.core.fat_tripper.get_file_clusters_list(directory_start_cluster)
         cache = (False, [])
         for cluster in clusters:
-            cache = self.find_place_for_entry_on_current_cluster(cluster, entries_number)
+            cache = self.find_place_for_entry_on_current_cluster(entries_number) #something wrong here
             if cache[0]:
                 break
         return cache

@@ -18,13 +18,16 @@ class FileEntryCollector:
         self.dir = dir_entry
 
     def get_file_entry(self):
+        offset = None
+        if self._cluster_to_offset:
+            offset = self._cluster_to_offset(self.dir.data_cluster_number)
         return FileEntry(self.long_name,
                          self.short_name,
                          self.dir.attributes,
                          self.dir.write_date,
                          self.dir.write_time,
                          self.dir.write_datetime,
-                         self._cluster_to_offset(self.dir.data_cluster_number),
+                         offset,
                          self.dir.data_cluster_number,
                          self.count_sub_entries_offsets()
                          )
@@ -38,13 +41,13 @@ class FileEntryCollector:
 
     @property
     def short_name(self):
-        return self.dir.parse_name()
+        return self.dir.name
 
     @property
     def long_name(self):
         name = ''
         for entries in self.ldir_list:
-            name += entries.parse_name_part()
+            name += entries.name_part
         return name.strip('\0 ￿')
 
 
@@ -74,7 +77,7 @@ class FileEntry(Structures.FileEntryStructure):
         if self._long_name:
             return self.long_name
         else:
-            return self.short_name
+            return self.short_name.lower()
 
     @property
     def attributes(self):
@@ -97,12 +100,23 @@ class FileEntry(Structures.FileEntryStructure):
         return self._data_offset
 
     @property
-    def date_cluster(self):
+    def data_cluster(self):
         return self._data_cluster
 
     @property
     def entries_offsets(self):
         return self._entries_offsets
+
+    def to_string(self):
+        file_representation = ''
+        file_representation += self.date.isoformat() + ' '
+        file_representation += self.time.isoformat() + '    '
+        file_representation += self.attributes.get_attributes_string() + '     '
+        file_representation += self.name
+        return file_representation
+
+    def is_correct_name(self, name):
+        return name.lower() == self.short_name.lower() or name.lower() == self.long_name.lower()
 
 
 class LongEntryReader(Structures.LongDirectoryEntryStructure):
@@ -128,14 +142,7 @@ class LongEntryReader(Structures.LongDirectoryEntryStructure):
     def name_part(self):
         return (self.ldir_name1 + self.ldir_name2 + self.ldir_name3).decode('utf-16')
 
-    def is_correct_check_sum(self, short_name: str):
-        unsigned_char = ctypes.c_ubyte
-        check_sum = unsigned_char(0).value
-        for x in short_name:
-            if unsigned_char(check_sum & 0x1).value:
-                check_sum = unsigned_char(0x80 + unsigned_char(check_sum >> 0x1).value + ord(x)).value
-            else:
-                check_sum = unsigned_char(unsigned_char(check_sum >> 0x1).value + ord(x)).value
+    def is_correct_check_sum(self, check_sum):
         return check_sum == self.ldir_check_sum
 
 
@@ -158,7 +165,8 @@ class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
         self.fat_entry_number = image_reader.convert_to_int(self.dir_first_cluster_low + self.dir_first_cluster_high, 4)
         self._check_sum = self._calc_check_sum()
         self.datetime = FEntryMD.DateTimeFormat(self.dir_write_date, self.dir_write_time)  # todo attention if zero
-        self._attributes = FEntryMD.DirectoryAttributes().parse_attributes(self.dir_attributes)
+        self._attributes = FEntryMD.DirectoryAttributes()
+        self._attributes.parse_attributes(self.dir_attributes)
         self._entry_start_offset = entry_start_offset
 
     @property
@@ -199,11 +207,12 @@ class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
     def _calc_check_sum(self, ):
         unsigned_char = ctypes.c_ubyte
         check_sum = unsigned_char(0).value
-        for x in self.dir_name.decode('cp866'):
+        for x in self.dir_name:
             if unsigned_char(check_sum & 0x1).value:
-                check_sum = unsigned_char(0x80 + unsigned_char(check_sum >> 0x1).value + ord(x)).value
+                check_sum = unsigned_char(
+                    0x80 + unsigned_char(check_sum >> 0x1).value + x).value  # truct.unpack('<B',x)[0]
             else:
-                check_sum = unsigned_char(unsigned_char(check_sum >> 0x1).value + ord(x)).value
+                check_sum = unsigned_char(unsigned_char(check_sum >> 0x1).value + x).value
         return check_sum
 
     @property

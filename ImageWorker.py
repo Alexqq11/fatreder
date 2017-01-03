@@ -1,4 +1,3 @@
-import mmap
 import struct
 
 
@@ -12,7 +11,7 @@ class ImageReader:
         self.readonly = None
 
     def _set_mapped_image(self, params="r+b"):
-        length = 512*1024*1024
+        length = 512 * 1024 * 1024
         if self.image:
             self.close_reader()
         if params == "r+b":
@@ -21,7 +20,7 @@ class ImageReader:
             self.readonly = False
         f = open(self.path, params)
         self.file_stream = f
-        self.image = f    #self.image = mmap.mmap(f.fileno(), length, offset=0)
+        self.image = f  # self.image = mmap.mmap(f.fileno(), length, offset=0)
 
     def _get_parse_mod(self, size):
         mod_parameter = ''
@@ -40,8 +39,8 @@ class ImageReader:
         return struct.unpack(self._get_parse_mod(size), data)[0]
 
     def set_data_global(self, offset, data):
-        #if self.readonly:
-            #self._set_mapped_image("xb")
+        # if self.readonly:
+        # self._set_mapped_image("xb")
         self.image.seek(offset)
         self.image.write(data)
 
@@ -64,7 +63,7 @@ class ImageReader:
         return buffer
 
     def close_reader(self):
-        #self.image.close()
-        self.file_stream.close() # todo exceptions
+        # self.image.close()
+        self.file_stream.close()  # todo exceptions
         self.image = None
         self.file_stream = None

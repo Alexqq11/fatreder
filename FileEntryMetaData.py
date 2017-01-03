@@ -11,6 +11,33 @@ class DirectoryAttributes:
         self.attr_directory = None
         self.attr_archive = None
         self.attr_long_name = None
+    @property
+    def read_only(self):
+        return self.attr_read_only
+
+    @property
+    def hidden(self):
+        return self.attr_hidden
+
+    @property
+    def system(self):
+        return self.attr_system
+
+    @property
+    def volume_id(self):
+        return self.attr_volume_id
+
+    @property
+    def directory(self):
+        return self.attr_directory
+
+    @property
+    def archive(self):
+        return self.attr_archive
+
+    @property
+    def long_name(self):
+        return self.attr_long_name
 
     def __add_attr(self, attribute_string, attribute_symbol, attribute_field):
         if attribute_field:

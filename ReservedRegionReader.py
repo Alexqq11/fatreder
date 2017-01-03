@@ -36,8 +36,8 @@ class BootSectorParser(Structures.FatBootSectorStructure):
 
         self._cluster_size = self.bpb_sectors_per_cluster * self.bpb_bytes_per_sector
         self._fat_zone_offset = self.bpb_bytes_per_sector * self.bpb_reserved_region_sectors_count
-        self._root_directory_offset = self.fat_zone_offset + self.bpb_number_fats * self.bpb_fat_size_32 \
-                                                             * self.bpb_bytes_per_sector
+        self._root_directory_offset = self.fat_zone_offset
+        self._root_directory_offset += self.bpb_number_fats * self.bpb_fat_size_32 * self.bpb_bytes_per_sector
         self._fat_size = (self.root_directory_offset - self.fat_zone_offset) // self.bpb_number_fats
         self._fat_offsets_list = self._fat_offsets_list()
 

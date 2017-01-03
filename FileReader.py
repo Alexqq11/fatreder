@@ -1,8 +1,8 @@
-import DirectoriesStructures as dir
-import FileEntryStructure as fs_struct
+import DirectoriesStructures as DirStructure
+import FileEntryCollector as FE_Collector
 
 
-class DataParser():
+class DataParser:
     def __init__(self, core):
         self.core = core
         self.image_reader = core.image_reader
@@ -67,11 +67,10 @@ class DirectoryParser:
         status = self.nio_is_dir(entry_global_offset)
         file_entry = None
         if status:
-            file_entry = fs_struct.FileEntryStructure()
+            file_entry = FE_Collector.FileEntryCollector(self.core.fat_bot_sector.calc_cluster_offset)
             self.File_entries.append(file_entry)
-            short_entry = fs_struct.DirEntryShortFat32()
-            short_entry.parse_entry_data(self.image_reader, entry_global_offset, return_offset=True)
-            file_entry.set_dir(short_entry, entry_global_offset)
+            short_entry = FE_Collector.ShortEntryReader(self.image_reader, entry_global_offset)
+            file_entry.set_dir(short_entry)
         return status, file_entry, False, 0
 
     def nio_is_end_lfn(self, offset, number):
@@ -83,12 +82,12 @@ class DirectoryParser:
         correct_lfn_status = self.nio_is_correct_lfn(directory_offset, previous_entry_number + 1)
         end_status = self.nio_is_end_lfn(directory_offset, previous_entry_number + 1)
         if lfn_status and correct_lfn_status:
-            ldir_entry = fs_struct.DirEntryLongFat32()
-            ldir_entry.parse_entry_data(self.image_reader, directory_offset, return_offset=True)
-            file_entry.append_ldir_entry(ldir_entry)
-            previous_entry_number += 1
-            # elif( not correct_lfn_status): # needs check
-            # file_entry.clear_lfn()
+            ldir_entry = FE_Collector.LongEntryReader(self.image_reader, directory_offset)
+            correct_lfn_status = correct_lfn_status and ldir_entry.is_correct_check_sum(file_entry.dir.check_sum)
+            if correct_lfn_status:
+                file_entry.append_ldir_entry(ldir_entry)
+                previous_entry_number += 1
+
         return lfn_status and correct_lfn_status, file_entry, end_status, previous_entry_number
 
     def reset_to_default_settings(self):
@@ -155,4 +154,4 @@ class DirectoryParser:
             self.nio_offset_manager(self.current_parse_lfn)
         file_entries = self.File_entries
         self.reset_to_default_settings()
-        return dir.Directory(file_entries)
+        return DirStructure.Directory([entry.get_file_entry() for entry in file_entries])
