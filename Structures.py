@@ -14,7 +14,17 @@ class ShortDirectoryEntryStructure:
         self.dir_file_size = None  # 28 4
         self.entry_size = 32  # if fat 32
         self.fat_entry_number = None  # parsed high and low words
-
+class FileEntryStructure:
+    def __init(self):
+        self._long_name = None
+        self._short_name = None
+        self._attributes = None
+        self._write_date = None
+        self._write_time = None
+        self._write_datetime = None
+        self._data_offset = None
+        self._data_cluster = None
+        self._entries_offsets = None
 class LongDirectoryEntryStructure:
     def __init__(self):
         self.ldir_order = None  # 0 1

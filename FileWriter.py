@@ -20,7 +20,7 @@ class FileWriter():
         self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)
 
     def find_place_for_entry_on_current_cluster(self, directory_cluster, entries_number):
-        directory_offset = self.core.fat_bot_sector.get_cluster_offset()
+        directory_offset = self.core.fat_bot_sector.calc_cluster_offset()
         offset = directory_offset
         count = 0
         start_offset = 0

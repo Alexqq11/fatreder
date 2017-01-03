@@ -14,11 +14,11 @@ class FileSystemUtil:
         self.working_directory = self.directory_reader.nio_parse_directory(self.root_directory_offset)
         self.current_path = '/'
 
-    def get_cluster_offset(self, cluster_number):
+    def calc_cluster_offset(self, cluster_number):
         return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
 
     def parse_directory(self, cluster_number):
-        return self.directory_reader.nio_parse_directory(self.get_cluster_offset(cluster_number))
+        return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(cluster_number))
 
     def cat_data(self, file_name):
         entry = self.working_directory.find(file_name, "by_name_file")

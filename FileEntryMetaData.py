@@ -16,7 +16,7 @@ class DirectoryAttributes:
         if attribute_field:
             attribute_string += attribute_symbol
         else:
-            attribute_string += '_'
+            attribute_string += '-'
         return attribute_string
 
     def get_attributes_string(self):

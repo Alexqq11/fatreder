@@ -1,7 +1,7 @@
 import struct
 
 
-class FatTripper:  # unsafety with out file image error checking
+class FatTableReader:  # unsafety with out file image error checking
     def __init__(self, core, fat_offsets):
         self.core = core
         self.image_reader = core.image_reader
@@ -80,8 +80,4 @@ class FatTripper:  # unsafety with out file image error checking
                 end_of_file = True
             else:
                 current_block = data
-                # else:
-                #   clusters_list.append(data)
-                #  fat_entry = data
-
         return clusters_list

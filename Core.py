@@ -1,4 +1,4 @@
-import FatTableWorker as ftw
+import FatTableReader as ftw
 import FileReader as fw
 import FileSystemWalker as FSW
 import ImageWorker as image
@@ -24,7 +24,7 @@ class Core:
     def _init_fat_boot_sector(self):
         self.fat_bot_sector = RRR.BootSectorParser(self.image_reader)  # fat.FatBootSector(self.image_reader)
     def _init_fat_tripper(self):
-        self.fat_tripper = ftw.FatTripper(self, self.fat_bot_sector.fat_offsets_list)
+        self.fat_tripper = ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
 
     def init_FSW(self):
         self.file_system_utils = FSW.FileSystemUtil(self)
