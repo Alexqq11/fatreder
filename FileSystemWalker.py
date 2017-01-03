@@ -1,20 +1,21 @@
 import FileReader as FR
 import FileWriter as FW
+#import Core
 
 
 class FileSystemUtil:
-    def __init__(self, core):
+    def __init__(self, core):#: Core.Core):
         ''' by default working directory is a root directory'''
         self.core = core
         self.file_reader = FR.DataParser(core)
         self.directory_reader = FR.DirectoryParser(core)
         self.file_writer = FW.FileWriter(core)
-        self.root_directory_offset = core.fat_bot_sector.get_root_dir_offset()
+        self.root_directory_offset = core.fat_bot_sector.root_directory_offset
         self.working_directory = self.directory_reader.nio_parse_directory(self.root_directory_offset)
         self.current_path = '/'
 
     def get_cluster_offset(self, cluster_number):
-        return self.core.fat_bot_sector.get_cluster_offset(cluster_number)
+        return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
 
     def parse_directory(self, cluster_number):
         return self.directory_reader.nio_parse_directory(self.get_cluster_offset(cluster_number))
@@ -68,9 +69,10 @@ class FileSystemUtil:
             info.append(files.human_readable_view.to_string())
         return info
 
-    def remove_file(self, file_mame):
-        dir_entry = self.working_directory.find(file_mame, "by_name_file")  # todo here
-        self.file_writer.delete_directory_or_file(dir_entry)
+    def remove_file(self, file_mame,recoverable = True, clean = False):
+        dir_entry = self.working_directory.find(file_mame, "by_name_file")  # todo here dir entry none
+        if dir_entry:
+            self.file_writer.delete_directory_or_file(dir_entry.entry_start, dir_entry.get_content_cluster_number(),dir_entry.entry_size, recoverable, clean)
 
     def get_file_information(self, name):
         return self.working_directory.find(name, "by_name").human_readable_view.to_string()

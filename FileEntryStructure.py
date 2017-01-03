@@ -20,7 +20,7 @@ class FileEntryStructure:
         self.short_entry_global_offset = global_offset
 
     def count_start_entry_offset_and_size(self):
-        self.entry_start = self.short_entry_global_offset - 32 * len(self.ldir_list)
+        self.entry_start = self.short_entry_global_offset - 32 * len(self.ldir_list) # todo проблема с переносом , через кластер
         self.entry_size = 32 * len(self.ldir_list) + 32
         # def clear_lfn(self):
         #   self.ldir_list = []

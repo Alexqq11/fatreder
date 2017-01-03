@@ -3,7 +3,7 @@ class FileWriter():
         self.core = core
         self.image_reader = core.image_reader
         self.entry_size = 32
-        self.cluster_size = core.fat_bot_sector.get_cluster_size()
+        self.cluster_size = core.fat_bot_sector.cluster_size
 
     def count_clusters(self, size_in_bytes):
         return (size_in_bytes + self.cluster_size - 1) // self.cluster_size
@@ -60,7 +60,7 @@ class FileWriter():
         pass
 
     def delete_fat_chain(self, start_cluster):
-        self.core.fat_tripper.delete_fat_chain(start_cluster)
+        self.core.fat_tripper.delete_file_fat_chain(start_cluster)
 
     def delete_data_clusters(self, start_cluster):
         offsets = self.core.fat_tripper.get_file_clusters_offsets_list(start_cluster)

@@ -17,7 +17,7 @@ class DataParser():
 
     def _set_work_settings(self, file_cluster_number):
         self.data_clusters_offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(file_cluster_number)
-        self.cluster_size = self.core.fat_bot_sector.get_cluster_size()
+        self.cluster_size = self.core.fat_bot_sector.cluster_size
 
     def parse_buffer(self, file_cluster_number):
         self._set_default_settings()
@@ -127,7 +127,7 @@ class DirectoryParser:
                 self.current_next_swapped = True
 
             end_of_cluster = self.offsets_list[self.current_cluster_offset_index]
-            end_of_cluster += self.core.fat_bot_sector.get_cluster_size()
+            end_of_cluster += self.core.fat_bot_sector.cluster_size
             if (self.current_offset + self.entry_size) == end_of_cluster:
                 self.current_cluster_offset_index += 1
                 # check indexation
@@ -139,7 +139,7 @@ class DirectoryParser:
 
     def nio_parse_directory(self, directory_offset):
         self.reset_to_default_settings()
-        dir_cluster_number = self.core.fat_bot_sector.get_cluster_number(directory_offset)
+        dir_cluster_number = self.core.fat_bot_sector.calc_cluster_number(directory_offset)
         self.offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(dir_cluster_number)
         self.current_offset = directory_offset
         cache = None

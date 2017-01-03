@@ -10,7 +10,7 @@ class FatTripper:  # unsafety with out file image error checking
         self.current_fat_offset = fat_offsets[self.current_fat_index]
         self.entry_size = 4
         self.last_empty_entry = 2
-        self.fat_size = core.fat_bot_sector.get_fat_size
+        self.fat_size = core.fat_bot_sector.fat_size
         self.write_protection = False
 
     def set_write_protection(self):
@@ -58,14 +58,14 @@ class FatTripper:  # unsafety with out file image error checking
         return self._get_fat_entry_local_offset(fat_entry) + self.current_fat_offset
 
     def get_file_clusters_offsets_list(self, fat_entry):
-        return [self.core.fat_bot_sector.get_cluster_offset(cls) for cls in self.get_file_clusters_list(fat_entry)]
+        return [self.core.fat_bot_sector.calc_cluster_offset(cls) for cls in self.get_file_clusters_list(fat_entry)]
 
     def delete_file_fat_chain(self, file_cluster):
         entries = self.get_file_clusters_list(file_cluster)
         entries.reverse()
         bytes = b'\x00' * 4
         for current_block in entries:
-            self.image_reader.set_data(self._get_fat_entry_global_offset(current_block), bytes)
+            self.image_reader.set_data_global(self._get_fat_entry_global_offset(current_block), bytes)
 
     def get_file_clusters_list(self, fat_entry):
         end_of_file = False

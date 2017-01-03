@@ -1,8 +1,8 @@
-import FatStructures as fat
 import FatTableWorker as ftw
 import FileReader as fw
 import FileSystemWalker as FSW
 import ImageWorker as image
+import ReservedRegionReader as RRR
 
 """"reserved region class """
 """ bs - boot sector"""
@@ -16,18 +16,15 @@ class Core:
         self.fat_tripper = None
         self.dir_parser = None
         self.file_system_utils = None
+        self.rrp = None
 
     def _init_image(self, path):
         self.image_reader = image.ImageReader(path)
 
     def _init_fat_boot_sector(self):
-        self.fat_bot_sector = fat.FatBootSector(self.image_reader)
-
+        self.fat_bot_sector = RRR.BootSectorParser(self.image_reader)  # fat.FatBootSector(self.image_reader)
     def _init_fat_tripper(self):
-        self.fat_tripper = ftw.FatTripper(self, self.fat_bot_sector.get_fat_offsets_list())
-
-    def _init_dir_parser(self):
-        self.dir_parser = fw.DirectoryParser(self)
+        self.fat_tripper = ftw.FatTripper(self, self.fat_bot_sector.fat_offsets_list)
 
     def init_FSW(self):
         self.file_system_utils = FSW.FileSystemUtil(self)
@@ -36,7 +33,6 @@ class Core:
         self._init_image(path)
         self._init_fat_boot_sector()
         self._init_fat_tripper()
-        # self._init_dir_parser
         self.init_FSW()
 
     def close_reader(self):
@@ -47,10 +43,20 @@ class Core:
 
 c = Core()
 
-inp = input("Path to image: ")
-c.init(inp)  # "..\.\dump (1).iso")
+#inp = input("Path to image: ")
+c.init("..\.\dump (1).iso")
+
 # todo use try except for keys interrypt
 first_call_cat = True
+
+
+def join_name(args):
+    string = ''
+    for x in range(1, len(args)):
+        string += args[x] + ' '
+    return string[0:-1:1]
+
+
 while (True):
     inp = input("]>")
     args = [x for x in inp.split()]
@@ -68,6 +74,12 @@ while (True):
         print("cd , ls . pwd, info , exit, help")
     elif (args[0].lower() == 'exit'):
         break
+    elif (args[0].lower() == 'rm-r'):
+        c.file_system_utils.remove_file(join_name(args))
+    elif (args[0].lower() == 'rm-a'):
+        c.file_system_utils.remove_file(join_name(args), recoverable=False)
+    elif (args[0].lower() == 'rm-c'):
+        c.file_system_utils.remove_file(join_name(args), clean=True)
     elif (args[0].lower() == 'cat'):
         data = c.file_system_utils.cat_data(args[1])
         i = iter(data)
@@ -77,6 +89,7 @@ while (True):
         print(next(i).decode(encoding))
     else:
         print('command not found')
+
 """""""""
 c.file_system_utils.change_directory('/архЭВм/Конспекты от Артура/')
 c.file_system_utils.change_directory('../')
