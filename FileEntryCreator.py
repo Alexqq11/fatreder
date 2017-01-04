@@ -105,8 +105,8 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
         self.dir_name = marker[0] + (b'\x20' * (12 - len(name))) + marker[1]
 
     def _set_name(self, name):
-        temp_oem_name = self._generate_short_name(name)
-        oem_name = self._generation_last_value(temp_oem_name[0], temp_oem_name[1])
+        oem_name, incorrect_translate = self._generate_short_name(name)
+        oem_name = self._generation_last_value(oem_name, incorrect_translate)
         self._write_short_name(oem_name)
 
     def _set_attributes(self, attr):
@@ -140,39 +140,47 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
                + self.dir_first_cluster_high + self.dir_write_time + self.dir_write_date \
                + self.dir_first_cluster_low + self.dir_file_size
 
-    def _generate_short_name(self, name: str):
-        name = name.upper()
-        oem_name = b''
-        oem_liter = None
-        oem_string = b''
-        incorrect_translate = False
+    def _is_bad_literal(self, liter):
         unsupported_values = b'\x22\x2a\x2b\x2c\x2e\x2f\x3a\x3b\x3c\x3d\x3e\x3f\x5b\x5c\x5d\x5e\x7c'
-        translated_name = name.strip()
-        extension_marker = translated_name[::-1].find('.', 0)
-        if extension_marker != -1:
-            translated_name = translated_name[:-extension_marker].strip('.') + '.' + translated_name[-extension_marker:]
-        for liter in translated_name:
+        return liter < b'\x20' and liter != b'\x05' or liter in unsupported_values
+
+    def _encode_name_to_oem_encoding(self, name):
+        oem_string = b''
+        oem_liter = b''
+        incorrect_translate = False
+        for liter in name:
             try:
                 oem_liter = liter.encode("cp866")
-                if oem_liter < b'\x20' and oem_liter != b'\x05' or oem_liter in unsupported_values:
+                if self._is_bad_literal(oem_liter):
                     oem_liter = b'_'
             except UnicodeEncodeError:
                 oem_liter = b'_'
                 incorrect_translate = True
             oem_string += oem_liter
-        for x in range(oem_string):
-            if x < 8 and oem_string[x] != b'.':
-                oem_name += oem_string[x]
-            else:
-                break
+        return oem_string , incorrect_translate
+
+    def _clear_name_content(self, name):
+        name = name.upper()
+        translated_name = name.strip()
+        extension_marker = translated_name[::-1].find('.', 0)
+        if extension_marker != -1:
+            translated_name = translated_name[:-extension_marker].strip('.') + '.' + translated_name[-extension_marker:]
+        return translated_name , extension_marker
+
+    def _translate_to_short_name(self, oem_string : bytes, extension_marker):
+        doth_position = oem_string.find(b'.',0)
+        if doth_position == -1:
+            doth_position = 9
+        oem_name = oem_string[0 : min(8, doth_position)]
         if extension_marker != -1:
             oem_name += b'.'
-            copied = 0
-            for x in range(len(oem_string) - extension_marker, len(oem_string)):
-                if copied < 3:
-                    oem_name += oem_string[x]
-                else:
-                    break
+            oem_name += oem_name[len(oem_string) - extension_marker : len(oem_string) - extension_marker + 3]
+        return oem_name
+
+    def _generate_short_name(self, name: str):
+        translated_name, extension_marker = self._clear_name_content(name)
+        oem_string, incorrect_translate  = self._encode_name_to_oem_encoding(translated_name)
+        oem_name = self._translate_to_short_name(oem_string, extension_marker)
         return oem_name, incorrect_translate
 
     def _check_name(self, oem_name):
