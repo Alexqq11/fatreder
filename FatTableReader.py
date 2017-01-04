@@ -23,6 +23,11 @@ class FatTableReader:  # unsafety with out file image error checking
         bytes = struct.pack('<I', next_cluster)  #:
         self.image_reader.set_data_global(self._get_fat_entry_global_offset(current_cluster), bytes)
 
+    def allocate_place(self, amount_of_clusters): # todo correct 90%  and return status
+        empty_entry = self.find_empty_entries(1)[0]
+        self.extend_file(empty_entry, amount_of_clusters -1)
+        return empty_entry
+
     def extend_file(self, last_cluster, amount_of_clusters):
         empty_clusters_list = self.find_empty_entries(amount_of_clusters)[0]
         current_cluster = last_cluster

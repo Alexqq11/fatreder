@@ -8,6 +8,16 @@ class Directory:
         self.entries_list = file_entries_list
         self.searching_dict = None
         self._init_files(file_entries_list)
+        self._short_names = tuple([entry.short_name for entry in file_entries_list])
+        self._long_names = tuple([entry.long_name for entry in file_entries_list])
+
+    @property
+    def short_names(self):
+        return self._short_names
+
+    @property
+    def long_names(self):
+        return self._long_names
 
     @property
     def is_root(self):

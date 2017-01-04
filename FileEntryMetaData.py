@@ -8,6 +8,7 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
         super().__init__()
         self._attribute_byte = None
         self.attr_byte = None
+        self.attr_string = None
         if arg_string:
             self.set_string_args(attr)
         else:
@@ -23,6 +24,7 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
         self.attr_directory = (16 == (self.attr_byte & 16))
         self.attr_archive = (32 == (self.attr_byte & 32))
         self.attr_long_name = (15 == (self.attr_byte & 15))
+        self.attr_string = self.get_attributes_string()
 
     def set_string_args(self, attr_str):
         if 'r' in attr_str:  self.attr_read_only = True
@@ -33,6 +35,7 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
         if 'a' in attr_str: self.attr_archive = True
         if 'l'in attr_str:  self.attr_long_name = True
         self._calc_attribute_byte()
+        self.attr_string = self.get_attributes_string()
 
     def _calc_attribute_byte(self):
         attribute_byte = 0
@@ -44,6 +47,9 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
         attribute_byte += self.attr_archive * 32
         self.attr_byte = attribute_byte
         self._attribute_byte = struct.pack('<B',attribute_byte)
+    @property
+    def attributes(self):
+        return self.attr_string
 
     @property
     def attribute_byte(self):

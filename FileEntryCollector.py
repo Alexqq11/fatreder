@@ -29,7 +29,8 @@ class FileEntryCollector:
                          self.dir.write_datetime,
                          offset,
                          self.dir.data_cluster_number,
-                         self.count_sub_entries_offsets()
+                         self.count_sub_entries_offsets(),
+                         self.dir.size
                          )
 
     def count_sub_entries_offsets(self):
@@ -52,7 +53,7 @@ class FileEntryCollector:
 
 
 class FileEntry(Structures.FileEntryStructure):
-    def __init__(self, long_name, short_name, attr, date, time, datetime, data_offset, data_cluster, entries_offsets):
+    def __init__(self, long_name, short_name, attr, date, time, datetime, data_offset, data_cluster, entries_offsets, size):
         super().__init__()
         self._long_name = long_name
         self._short_name = short_name
@@ -63,6 +64,11 @@ class FileEntry(Structures.FileEntryStructure):
         self._data_offset = data_offset
         self._data_cluster = data_cluster
         self._entries_offsets = entries_offsets
+        self._size = size
+
+    @property
+    def size(self):
+        return self.size
 
     @property
     def long_name(self):
@@ -82,7 +88,9 @@ class FileEntry(Structures.FileEntryStructure):
     @property
     def attributes(self):
         return self._attributes
-
+    @property
+    def attr_string(self):
+        return self.attributes.attributes
     @property
     def date(self):
         return self._write_date
