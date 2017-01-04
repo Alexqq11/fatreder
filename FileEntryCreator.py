@@ -1,19 +1,85 @@
+import ctypes
 import struct
 
 import FileEntryMetaData
 import Structures
-import ctypes
 
 
 class FileEntryCreator(Structures.FileEntryStructure):
-    pass
+    def __init__(self):
+        self.long_entry_creator = LongEntryCreator()
+        self.short_entry_creator = ShortEntryCreator()
+        self.check_sum = None
+        self.entries_list = []
+        pass
+
+    def new_entry(self, name, attributes, file_data_cluster, file_size, dir_listing, time=None):
+        self.check_sum = None
+        self.entries_list = []
+        entry = self.short_entry_creator.new_entry(name, attributes, file_data_cluster, file_size, dir_listing, time)
+        self.entries_list.append(entry[0])
+        self.check_sum = entry[1]
+        self.create_long_directories_entries(name)
+        return self.entries_list
+
+    def split_name(self, name):
+        name_parts = []
+        for x in range(0, len(name), 13):
+            name_parts.append(name[x: x + 13])
+        return tuple(name_parts)
+
+    def create_long_directories_entries(self, name):
+        name_parts = self.split_name(name)
+        last_part = False
+        for x in range(0, len(name_parts)):
+            if x == len(name_parts):
+                last_part = True
+            self.entries_list.append(
+                self.long_entry_creator.new_entry(name_parts[x], x + 1, self.check_sum, last_part)[0])
+
+
+class LongEntryCreator(Structures.LongDirectoryEntryStructure):
+    def __init__(self):
+        super().__init__()
+
+    def new_entry(self, name_part, number, check_sum, is_last=False):
+        self._set_name(name_part)
+        self._set_number(number)
+        self._set_meta_data(is_last)
+        return self._join_fields(), number
+
+    def _set_name(self, name_part):
+        utf_name = name_part.encode("utf-16")
+        if len(utf_name) < 26:
+            utf_name += b'\x00\x00'
+            utf_name = utf_name + b'\xff' * (26 - len(utf_name))
+        self.ldir_name1 = utf_name[0:10]
+        self.ldir_name2 = utf_name[10:22]
+        self.ldir_name3 = utf_name[22:26]
+
+    def _set_meta_data(self, check_sum):
+        self.ldir_attribute = b'\x0f'  # struct.pack("<B", 15) #???
+        self.ldir_first_cluster_low = b'\x00\x00'
+        self.ldir_check_sum = struct.pack("<B", check_sum)
+        self.ldir_type = b'\x00'
+
+    def _set_number(self, number, is_last=False):
+        if is_last:
+            self.ldir_order = struct.pack("<B", ctypes.c_ubyte(number | 0x40).value)
+        else:
+            self.ldir_order = struct.pack("<B", number)
+
+    def _join_fields(self):
+        return self.ldir_order + self.ldir_name1 + self.ldir_attribute + self.ldir_type + self.ldir_check_sum \
+               + self.ldir_name2 + self.ldir_first_cluster_low + self.ldir_name3
 
 
 class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
     def __init__(self):
         super().__init__()
         self.dir_listing = None
-    def new_entry(self, name, attributes, file_data_cluster, file_size , dir_listing, time = None):
+
+    def new_entry(self, name, attributes, file_data_cluster, file_size, dir_listing, time=None):
         self.dir_listing = dir_listing
         self._set_name(name)
         self._set_attributes(attributes)
