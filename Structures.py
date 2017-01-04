@@ -83,3 +83,15 @@ class FatBootSectorStructure:
         self.bs_volume_id = None  # 67 4
         self.bs_volume_label = None  # 71 11
         self.bs_file_system_type = None  # 82 8
+
+
+class DirectoryAttributesStructure:
+    def __init__(self):
+        self.attr_read_only = None
+        self.attr_hidden = None
+        self.attr_system = None
+        self.attr_volume_id = None
+        self.attr_directory = None
+        self.attr_archive = None
+        self.attr_long_name = None
+

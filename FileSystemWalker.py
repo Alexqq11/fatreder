@@ -28,15 +28,15 @@ class FileSystemUtil:
                 yield data_part
 
     def calculate_directory_path(self):
-        parent_cluster = self.working_directory.get_file_cluster_number('..')
-        own_cluster = self.working_directory.get_file_cluster_number('.')
+        parent_cluster = self.working_directory.get_file_data_cluster('..')
+        own_cluster = self.working_directory.get_file_data_cluster('.')
         temp_dir = None
         path = '/'
         while parent_cluster[0]:
             temp_dir = self.parse_directory(parent_cluster[1])
             path = '/' + temp_dir.find(own_cluster[1], 'by_address').name + path
             own_cluster = parent_cluster
-            parent_cluster = temp_dir.get_file_cluster_number('..')
+            parent_cluster = temp_dir.get_file_data_cluster('..')
         return path
 
     def change_directory(self, path):

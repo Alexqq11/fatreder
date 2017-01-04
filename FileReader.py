@@ -100,6 +100,7 @@ class DirectoryParser:
         self.current_next_swapped = True
         self.current_next_set = False
         self.current_parse_lfn = False
+        self.back_index_set = False
 
     def nio_offset_manager(self, parsing_lfn):
         if parsing_lfn:
@@ -110,11 +111,13 @@ class DirectoryParser:
 
             if self.current_offset == self.offsets_list[self.current_cluster_offset_index]:
                 self.current_cluster_offset_index -= 1
+                self.back_index_set = True
                 if self.current_cluster_offset_index >= 0:  # fix here > --> >= attention!
                     self.current_offset = self.offsets_list[self.current_cluster_offset_index]  # check indexation
-                    self.current_offset += self.core.fat_bot_sectorget_cluster_size() - self.entry_size
+                    self.current_offset += self.core.fat_bot_sector.cluster_size - self.entry_size
                 else:
                     self.current_cluster_offset_index = 0
+                    self.back_index_set = False
                     self.current_parse_lfn = False
                     self.nio_offset_manager(False)
             else:
@@ -122,6 +125,9 @@ class DirectoryParser:
         else:
             if not self.current_next_swapped:
                 self.current_offset = self.current_next
+                if self.back_index_set:
+                    self.current_cluster_offset_index += 1
+                    self.back_index_set = False
                 self.current_next_set = False
                 self.current_next_swapped = True
 

@@ -3,14 +3,18 @@ import struct
 
 
 class DirectoryAttributes:
-    def __init__(self):
-        self.attr_read_only = None
-        self.attr_hidden = None
-        self.attr_system = None
-        self.attr_volume_id = None
-        self.attr_directory = None
-        self.attr_archive = None
-        self.attr_long_name = None
+    def __init__(self, attr_byte):
+        super().__init__()
+        attr_byte = struct.unpack('<B', attr_byte)[0]
+        self.attr_read_only = (1 == (attr_byte & 1))
+        self.attr_hidden = (2 == (attr_byte & 2))
+        self.attr_system = (4 == (attr_byte & 4))
+        self.attr_volume_id = (8 == (attr_byte & 8))
+        self.attr_directory = (16 == (attr_byte & 16))
+        self.attr_archive = (32 == (attr_byte & 32))
+        self.attr_long_name = (15 == (attr_byte & 15))
+
+
     @property
     def read_only(self):
         return self.attr_read_only
@@ -57,21 +61,6 @@ class DirectoryAttributes:
         attribute_string = self.__add_attr(attribute_string, 'l', self.attr_long_name)
         return attribute_string
 
-    def parse_attributes(self, attr_byte):
-        attr_byte = struct.unpack('<B', attr_byte)[0]
-        self.attr_read_only = (1 == (attr_byte & 1))
-        self.attr_hidden = (2 == (attr_byte & 2))
-        self.attr_system = (4 == (attr_byte & 4))
-        self.attr_volume_id = (8 == (attr_byte & 8))
-        self.attr_directory = (16 == (attr_byte & 16))
-        self.attr_archive = (32 == (attr_byte & 32))
-        self.attr_long_name = (15 == (attr_byte & 15))
-
-    def is_lfn(self, ldir_order_byte, ldir_attr_byte):
-        ldir_attr_byte = struct.unpack('<B', ldir_attr_byte)[0]
-        mask = 2 ** 5 + 2 ** 4 + 2 ** 3 + 2 ** 2 + 2 ** 1 + 2 ** 0
-        return ((ldir_attr_byte & mask) == 15) and (ldir_order_byte != b'\xe5')
-
 
 class DateTimeFormat:
     def __init__(self, date_bytes, time_bytes):
@@ -96,6 +85,8 @@ class DateTimeFormat:
             self.month = 1
         if self.day == 0:
             self.day = 1
+        if self.day > 28:
+            self.day =28
         if self.hours > 23:
             self.hours = 23
         if self.minutes > 59:
