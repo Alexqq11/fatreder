@@ -28,15 +28,15 @@ class FileSystemUtil:
                 yield data_part
 
     def calculate_directory_path(self):
-        parent_cluster = self.working_directory.get_file_data_cluster('..')
-        own_cluster = self.working_directory.get_file_data_cluster('.')
-        temp_dir = None
+        parent_cluster = self.working_directory.parent_directory_cluster
+        own_cluster = self.working_directory.data_cluster
+        temp_dir = self.working_directory
         path = '/'
-        while parent_cluster[0]:
-            temp_dir = self.parse_directory(parent_cluster[1])
-            path = '/' + temp_dir.find(own_cluster[1], 'by_address').name + path
+        while not temp_dir.is_root:
+            temp_dir = self.parse_directory(parent_cluster)
+            path = '/' + temp_dir.find(own_cluster, 'by_address').name + path
             own_cluster = parent_cluster
-            parent_cluster = temp_dir.get_file_data_cluster('..')
+            parent_cluster = temp_dir.parent_directory_cluster
         return path
 
     def change_directory(self, path):
@@ -62,7 +62,7 @@ class FileSystemUtil:
         if operation_status:
             self.working_directory = temp_dir
 
-    def get_working_directory_information(self):
+    def get_working_directory_information(self, names = True, datetime = False, attributes = False , hidden = False):
         info = []
         for files in self.working_directory.entries_list:
             info.append(files.to_string())
@@ -71,7 +71,7 @@ class FileSystemUtil:
     def remove_file(self, file_mame,recoverable = True, clean = False):
         dir_entry = self.working_directory.find(file_mame, "by_name_file")  # todo here dir entry none
         if dir_entry:
-            self.file_writer.delete_directory_or_file(dir_entry.entry_start, dir_entry.get_content_cluster_number(),dir_entry.entry_size, recoverable, clean)
+            self.file_writer.delete_directory_or_file(dir_entry, recoverable, clean)
 
     def get_file_information(self, name):
         return self.working_directory.find(name, "by_name").to_string()

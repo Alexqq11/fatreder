@@ -44,8 +44,8 @@ if __name__ == "__main__":
     c = Core()
 
     #inp = input("Path to image: ")
-   # c.init("..\.\dump (1).iso")
-    c.init(".././test.img")
+    c.init("..\.\dump (1).iso")
+   # c.init(".././test.img")
     # todo use try except for keys interrypt
     first_call_cat = True
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         inp = input("]>")
         args = [x for x in inp.split()]
         if (args[0].lower() == 'cd'):
-            c.file_system_utils.change_directory(args[1])
+            c.file_system_utils.change_directory(join_name(args))
         elif (args[0].lower() == 'ls'):
             info = c.file_system_utils.get_working_directory_information()
             for entry in info:

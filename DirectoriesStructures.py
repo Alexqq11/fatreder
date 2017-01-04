@@ -1,36 +1,36 @@
 class Directory:
     def __init__(self, file_entries_list):
-        self.root_status = None
-        self.self_data_cluster = None
-        self.self_data_offset = None
-        self.parent_data_cluster = None
-        self.parent_data_offset = None
+        self._root_status = None
+        self._self_data_cluster = None
+        self._self_data_offset = None
+        self._parent_data_cluster = None
+        self._parent_data_offset = None
         self.entries_list = file_entries_list
         self.searching_dict = None
         self._init_files(file_entries_list)
 
     @property
     def is_root(self):
-        return self.root_status
+        return self._root_status
 
     @property
     def data_cluster(self):
-        return self.self_data_cluster
+        return self._self_data_cluster
 
     @property
     def data_offset(self):
-        return self.self_data_offset
+        return self._self_data_offset
 
     @property
     def parent_directory_cluster(self):
-        return self.parent_directory_cluster
+        return self._parent_data_cluster
 
     @property
     def parent_directory_offset(self):
-        return self.parent_data_offset
+        return self._parent_data_offset
 
     def _init_search_dict(self):
-        self.searching_dict = {"by_address": lambda value, iterable: value == iterable.data_clustercv,
+        self.searching_dict = {"by_address": lambda value, iterable: value == iterable.data_cluster,
                                'by_name_dir': lambda value, iterable: iterable.is_correct_name(value) and
                                                                       iterable.attributes.directory,
                                'by_name': lambda value, iterable: iterable.is_correct_name(value),
@@ -42,18 +42,18 @@ class Directory:
         self_entry = self.find(".", "by_name")
         parent_entry = self.find("..", "by_name")
         if self_entry and parent_entry:
-            self.self_data_cluster = self_entry.data_cluster
-            self.self_data_offset = self_entry.data_offset
-            self.parent_data_cluster = parent_entry.data_cluster
-            self.parent_data_offset = parent_entry.data_offset
-            self.root_status = False
+            self._self_data_cluster = self_entry.data_cluster
+            self._self_data_offset = self_entry.data_offset
+            self._parent_data_cluster = parent_entry.data_cluster
+            self._parent_data_offset = parent_entry.data_offset
+            self._root_status = False
         else:
             if file_entries_list[0].attributes.volume_id:
-                self.self_data_cluster = 2
-                self.self_data_offset = file_entries_list[0].entries_offsets[0]
-                self.parent_data_cluster = 2
-                self.parent_data_offset = file_entries_list[0].entries_offsets[0]
-                self.root_status = True
+                self._self_data_cluster = 2
+                self._self_data_offset = file_entries_list[0].entries_offsets[0]
+                self._parent_data_cluster = 2
+                self._parent_data_offset = file_entries_list[0].entries_offsets[0]
+                self._root_status = True
             else:
                 pass  # todo rase here something
 

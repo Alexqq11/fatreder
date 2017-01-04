@@ -165,7 +165,7 @@ class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
         self.fat_entry_number = image_reader.convert_to_int(self.dir_first_cluster_low + self.dir_first_cluster_high, 4)
         self._check_sum = self._calc_check_sum()
         self.datetime = FEntryMD.DateTimeFormat(self.dir_write_date, self.dir_write_time)  # todo attention if zero
-        self._attributes = FEntryMD.DirectoryAttributes(self.dir_attributes)
+        self._attributes = FEntryMD.DirectoryAttributesGetter(self.dir_attributes)
         self._entry_start_offset = entry_start_offset
 
     @property
@@ -203,7 +203,7 @@ class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
     def check_sum(self):
         return self._check_sum
 
-    def _calc_check_sum(self, ):
+    def _calc_check_sum(self):
         unsigned_char = ctypes.c_ubyte
         check_sum = unsigned_char(0).value
         for x in self.dir_name:

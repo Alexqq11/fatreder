@@ -1,21 +1,54 @@
 import datetime
 import struct
+import Structures
 
 
-class DirectoryAttributes:
-    def __init__(self, attr_byte):
+class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
+    def __init__(self, attr, arg_string=False):
         super().__init__()
-        attr_byte = struct.unpack('<B', attr_byte)[0]
-        self.attr_read_only = (1 == (attr_byte & 1))
-        self.attr_hidden = (2 == (attr_byte & 2))
-        self.attr_system = (4 == (attr_byte & 4))
-        self.attr_volume_id = (8 == (attr_byte & 8))
-        self.attr_directory = (16 == (attr_byte & 16))
-        self.attr_archive = (32 == (attr_byte & 32))
-        self.attr_long_name = (15 == (attr_byte & 15))
+        self._attribute_byte = None
+        self.attr_byte = None
+        if arg_string:
+            self.set_string_args(attr)
+        else:
+            self.set_byte_args(attr)
 
+    def set_byte_args(self,attr_byte):
+        self._attribute_byte = attr_byte
+        self.attr_byte = struct.unpack('<B', attr_byte)[0]
+        self.attr_read_only = (1 == (self.attr_byte & 1))
+        self.attr_hidden = (2 == (self.attr_byte & 2))
+        self.attr_system = (4 == (self.attr_byte & 4))
+        self.attr_volume_id = (8 == (self.attr_byte & 8))
+        self.attr_directory = (16 == (self.attr_byte & 16))
+        self.attr_archive = (32 == (self.attr_byte & 32))
+        self.attr_long_name = (15 == (self.attr_byte & 15))
+
+    def set_string_args(self, attr_str):
+        if 'r' in attr_str:  self.attr_read_only = True
+        if 'h' in attr_str: self.attr_hidden = True
+        if 's' in attr_str: self.attr_system = True
+        if 'v' in attr_str: self.attr_volume_id = True
+        if 'd' in attr_str: self.attr_directory = True
+        if 'a' in attr_str: self.attr_archive = True
+        if 'l'in attr_str:  self.attr_long_name = True
+        self._calc_attribute_byte()
+
+    def _calc_attribute_byte(self):
+        attribute_byte = 0
+        attribute_byte += self.attr_read_only * 1
+        attribute_byte += self.attr_hidden  * 2
+        attribute_byte += self.attr_system * 4
+        attribute_byte += self.attr_volume_id * 8
+        attribute_byte += self.attr_directory * 16
+        attribute_byte += self.attr_archive * 32
+        self.attr_byte = attribute_byte
+        self._attribute_byte = struct.pack('<B',attribute_byte)
 
     @property
+    def attribute_byte(self):
+        return  self.attribute_byte
+
     def read_only(self):
         return self.attr_read_only
 
@@ -61,6 +94,48 @@ class DirectoryAttributes:
         attribute_string = self.__add_attr(attribute_string, 'l', self.attr_long_name)
         return attribute_string
 
+class DateTimeGetter:
+    def __init__(self, date_time = None):
+        self._time_bytes = None
+        self._date_bytes = None
+        self._init_date_time(date_time)
+
+    @property
+    def time_bytes(self):
+        return self._time_bytes
+
+    @property
+    def date_bytes(self):
+        return self._date_bytes
+
+    def _init_date_time(self, date_time = None):
+        write_time = None
+        if date_time:
+            write_time = date_time
+        else:
+            write_time = datetime.datetime.now()
+        self._convert_date(write_time.date())
+        self._convert_time(write_time.time())
+
+    def _convert_date(self, date : datetime.date):
+        day = bin(date.day)[2:]
+        day = ('0' * (5 - len(day))) + day
+        month =  bin(date.month)[2:]
+        month = ('0' * (4 - len(month))) + month
+        year = bin(date.year - 1980)[2:]
+        year = ('0' * (7 - len(year))) + year
+        binary_date = '0b' + year + month + day
+        self._date_bytes = struct.pack('<H', int(binary_date,2))
+
+    def _convert_time(self, time : datetime.time):
+        seconds = bin(time.second  // 2)[2:]
+        seconds = ('0' * (5 - len(seconds))) + seconds
+        minutes = bin(time.minute)[2:]
+        minutes = ('0' * (6 - len(minutes))) + minutes
+        hours = bin(time.hour)[2:]
+        hours = ('0' * (5 - len(hours))) + hours
+        binary_time = '0b' + hours + minutes + seconds
+        self._time_bytes = struct.pack('<H', int(binary_time,2))
 
 class DateTimeFormat:
     def __init__(self, date_bytes, time_bytes):

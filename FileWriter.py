@@ -1,3 +1,4 @@
+import FileEntryCollector as FeC
 class FileWriter():
     def __init__(self, core):
         self.core = core
@@ -52,12 +53,13 @@ class FileWriter():
                 break
         return cache
 
-    def delete_file_entry(self, file_entry_offset, entry_size_in_bytes, clean=False):
+    def delete_file_entry(self, file_entries_offsets, clean=False):
         data = b'\xe5'
         if clean:
-            data = b'\x00' * entry_size_in_bytes
-        self.image_reader.set_data_global(file_entry_offset, data)
-        pass
+            data = b'\x00' * 32
+        for file_entry_offset in file_entries_offsets:
+            self.image_reader.set_data_global(file_entry_offset, data)
+
 
     def delete_fat_chain(self, start_cluster):
         self.core.fat_tripper.delete_file_fat_chain(start_cluster)
@@ -68,14 +70,13 @@ class FileWriter():
         for offset in offsets:
             self.image_reader.set_data_global(offset, zero_cluster)
 
-    def delete_directory_or_file(self, file_entry_offset, file_entry_size_in_bytes, file_data_cluster, recoverable=True,
-                                 clean=False):
+    def delete_directory_or_file(self, file_entry : FeC.FileEntry , recoverable=True, clean=False):
         if clean:
-            self.delete_data_clusters(file_data_cluster)
-            self.delete_fat_chain(file_data_cluster)
-            self.delete_file_entry(file_entry_offset, file_entry_size_in_bytes, True)
+            self.delete_data_clusters(file_entry.data_cluster)
+            self.delete_fat_chain(file_entry.data_cluster)
+            self.delete_file_entry(file_entry.entries_offsets, True)
         elif recoverable:
-            self.delete_file_entry(file_entry_offset, file_entry_size_in_bytes)
+            self.delete_file_entry(file_entry.entries_offsets)
         else:
-            self.delete_fat_chain(file_data_cluster)
-            self.delete_file_entry(file_entry_offset, file_entry_size_in_bytes, True)
+            self.delete_fat_chain(file_entry.data_cluster)
+            self.delete_file_entry(file_entry.entries_offsets, True)
