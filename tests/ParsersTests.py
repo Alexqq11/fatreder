@@ -37,22 +37,22 @@ class FatTablesReadersTests(unittest.TestCase):
             short_creator = FileEntryCreator.ShortEntryCreator()
             with self.subTest("test_generate_last_value_file_exist"):
                 short_creator.dir_listing = (
-                b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
+                    b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
                 name = short_creator._generation_last_value(b"AANAME~1.EXE")
                 self.assertTrue(name == b"AANAME~6.EXE")
             with self.subTest("test_generate_last_value_file_bad_parse_on, but not exist"):
                 short_creator.dir_listing = (
-                b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
+                    b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
                 name = short_creator._generation_last_value(b"NAME~1.EXE", True)
                 self.assertTrue(name == b"NAME~1~1.EXE")
             with self.subTest("test_generate_last_value_file_name_too_long"):
                 short_creator.dir_listing = (
-                b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
+                    b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
                 name = short_creator._generation_last_value(b"AANAMEFUCKFUCK.EXE")
                 self.assertTrue(name == b"AANAME~6.EXE")
             with self.subTest("test_generate_last_value_file_name_normal"):
                 short_creator.dir_listing = (
-                b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
+                    b"AANAME~1.EXE", b"AANAME~2.EXE", b"AANAME~3.EXE", b"AANAME~4.EXE", b"AANAME~5.EXE")
                 name = short_creator._generation_last_value(b"AANAMEFF.EXE")
                 self.assertTrue(name == b"AANAMEFF.EXE")
             self.assertTrue(True)

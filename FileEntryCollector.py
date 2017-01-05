@@ -53,7 +53,8 @@ class FileEntryCollector:
 
 
 class FileEntry(Structures.FileEntryStructure):
-    def __init__(self, long_name, short_name, attr, date, time, datetime, data_offset, data_cluster, entries_offsets, size):
+    def __init__(self, long_name, short_name, attr, date, time, datetime, data_offset, data_cluster, entries_offsets,
+                 size):
         super().__init__()
         self._long_name = long_name
         self._short_name = short_name
@@ -88,9 +89,11 @@ class FileEntry(Structures.FileEntryStructure):
     @property
     def attributes(self):
         return self._attributes
+
     @property
     def attr_string(self):
         return self.attributes.attributes
+
     @property
     def date(self):
         return self._write_date

@@ -18,12 +18,12 @@ class FatTableReader:  # unsafety with out file image error checking
         bytes = struct.pack('<I', next_cluster)  #:
         self.image_reader.set_data_global(self._get_fat_entry_global_offset(current_cluster), bytes)
 
-    def allocate_place(self, amount_of_clusters): # todo correct 90%  and return status
-        empty_entry , status = self.find_empty_entries(1) # empty_entry is list
+    def allocate_place(self, amount_of_clusters):  # todo correct 90%  and return status
+        empty_entry, status = self.find_empty_entries(1)  # empty_entry is list
         if status:
             empty_entry = empty_entry[0]
-            status = status and self.extend_file(empty_entry, amount_of_clusters -1)
-        return empty_entry , status
+            status = status and self.extend_file(empty_entry, amount_of_clusters - 1)
+        return empty_entry, status
 
     def extend_file(self, last_cluster, amount_of_clusters):
         empty_clusters_list, status = self.find_empty_entries(amount_of_clusters)
@@ -35,15 +35,16 @@ class FatTableReader:  # unsafety with out file image error checking
             self.set_cluster_entry(current_cluster)
         return status
 
-    def find_empty_entries(self, amount_of_entries, all_space = False):  ## TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE //Full rum neded
+    def find_empty_entries(self, amount_of_entries,
+                           all_space=False):  ## TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE //Full rum neded
         clusters_list = []
         start_cluster = 3
-        cache = ([],True)
+        cache = ([], True)
         if not self.write_protection:
             started = False
             while amount_of_entries > len(clusters_list):
-                if start_cluster > self.max_allocation: #self._get_fat_entry_global_offset(start_cluster) == self.fat_offsets[self.current_fat_index] + self.fat_size:
-                    cache = ([],False)
+                if start_cluster > self.max_allocation:  # self._get_fat_entry_global_offset(start_cluster) == self.fat_offsets[self.current_fat_index] + self.fat_size:
+                    cache = ([], False)
                     break
                 else:
                     if not started and not all_space:
@@ -53,7 +54,7 @@ class FatTableReader:  # unsafety with out file image error checking
                                                              self.entry_size, True)
                     if data == 0:
                         clusters_list.append(start_cluster)
-                        cache = (clusters_list,True)
+                        cache = (clusters_list, True)
                         self.last_empty_entry = start_cluster
                     start_cluster += 1
         if not cache[1] and not all_space:
@@ -74,7 +75,8 @@ class FatTableReader:  # unsafety with out file image error checking
         entries.reverse()
         bytes = b'\x00' * 4
         for current_block in entries:
-            self.set_cluster_entry(current_block, 0) #.image_reader.set_data_global(self._get_fat_entry_global_offset(current_block), bytes)
+            self.set_cluster_entry(current_block,
+                                   0)  # .image_reader.set_data_global(self._get_fat_entry_global_offset(current_block), bytes)
         if set_end:
             self.set_cluster_entry(entries[len(entries) - 1], 268435448)
 

@@ -94,4 +94,3 @@ class DirectoryAttributesStructure:
         self.attr_directory = None
         self.attr_archive = None
         self.attr_long_name = None
-

@@ -1,8 +1,7 @@
-import FatTableReader as ftw
-import FileReader as fw
-import FileSystemWalker as FSW
-import ImageWorker as image
-import ReservedRegionReader as RRR
+import FatTableReader as Ftw
+import FileSystemWalker as Fsw
+import ImageWorker as Image
+import ReservedRegionReader as Rrr
 
 """"reserved region class """
 """ bs - boot sector"""
@@ -19,15 +18,16 @@ class Core:
         self.rrp = None
 
     def _init_image(self, path):
-        self.image_reader = image.ImageReader(path)
+        self.image_reader = Image.ImageReader(path)
 
     def _init_fat_boot_sector(self):
-        self.fat_bot_sector = RRR.BootSectorParser(self.image_reader)  # fat.FatBootSector(self.image_reader)
+        self.fat_bot_sector = Rrr.BootSectorParser(self.image_reader)  # fat.FatBootSector(self.image_reader)
+
     def _init_fat_tripper(self):
-        self.fat_tripper = ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
+        self.fat_tripper = Ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
 
     def init_FSW(self):
-        self.file_system_utils = FSW.FileSystemUtil(self)
+        self.file_system_utils = Fsw.FileSystemUtil(self)
 
     def init(self, path):
         self._init_image(path)
@@ -40,12 +40,13 @@ class Core:
 
     pass
 
+
 if __name__ == "__main__":
     c = Core()
 
-    #inp = input("Path to image: ")
+    # inp = input("Path to image: ")
     c.init("..\.\dump (1).iso")
-   # c.init(".././test.img")
+    # c.init(".././test.img")
     # todo use try except for keys interrypt
     first_call_cat = True
 
@@ -77,11 +78,11 @@ if __name__ == "__main__":
         elif (args[0].lower() == 'mkdir'):
             c.file_system_utils.new_directory(join_name(args))
         elif (args[0].lower() == 'cp'):
-            c.file_system_utils.copy_on_image(args[1] , args[2])
+            c.file_system_utils.copy_on_image(args[1], args[2])
         elif (args[0].lower() == 'rn'):
             c.file_system_utils.rename(args[1], args[2])
         elif (args[0].lower() == 'ts'):
-            c.file_system_utils.transfer(args[1],args[2])
+            c.file_system_utils.transfer(args[1], args[2])
         elif (args[0].lower() == 'rm-r'):
             c.file_system_utils.remove_file(join_name(args))
         elif (args[0].lower() == 'rm-a'):

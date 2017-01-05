@@ -20,7 +20,7 @@ class FileEntryCreator(Structures.FileEntryStructure):
                                                               dir_listing, time)
         self.entries_list.append(entry)
         self.check_sum = check_sum
-        if name not in ['.','..']:
+        if name not in ['.', '..']:
             self.create_long_directories_entries(name)
         return self.entries_list
 
@@ -107,16 +107,16 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
         marker = None
         name = None
         extension = None
-        if oem_name not in [b".", b".."] :# default_correct_name
+        if oem_name not in [b".", b".."]:  # default_correct_name
             marker = oem_name.split(b'.')
             marker.append(b'')
-            name , extension = marker[0], marker[1]
+            name, extension = marker[0], marker[1]
             name = name[0:8]
             extension = extension[0:3]
         else:
             name = oem_name
             extension = b''
-        temp = name + (b'\x20' * (11 - len(name) -len(extension) )) + extension
+        temp = name + (b'\x20' * (11 - len(name) - len(extension))) + extension
         self.dir_name = temp
 
     def _set_name(self, name):

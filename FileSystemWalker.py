@@ -155,6 +155,7 @@ class FileSystemUtil:
         destination_dir, file_source, file_name = self._pre_operation_processing(path)
         self.file_writer.rename(new_name, destination_dir, file_source)
         self.refresh()
+
     def transfer(self, from_path, to_path):
         destination_dir, error = self._change_directory(to_path)
         if error:
@@ -189,5 +190,6 @@ class FileSystemUtil:
 
     def get_file_information(self, name):
         return self.working_directory.find(name, "by_name").to_string()
+
     def refresh(self):
         self.working_directory = self.parse_directory(self.working_directory.data_cluster)
