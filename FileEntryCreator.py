@@ -16,9 +16,10 @@ class FileEntryCreator(Structures.FileEntryStructure):
     def new_entry(self, name, attributes, file_data_cluster, file_size, dir_listing, time=None):
         self.check_sum = None
         self.entries_list = []
-        entry = self.short_entry_creator.new_entry(name, attributes, file_data_cluster, file_size, dir_listing, time)
-        self.entries_list.append(entry[0])
-        self.check_sum = entry[1]
+        entry, check_sum = self.short_entry_creator.new_entry(name, attributes, file_data_cluster, file_size,
+                                                              dir_listing, time)
+        self.entries_list.append(entry)
+        self.check_sum = check_sum
         self.create_long_directories_entries(name)
         return self.entries_list
 
@@ -34,8 +35,8 @@ class FileEntryCreator(Structures.FileEntryStructure):
         for x in range(0, len(name_parts)):
             if x == len(name_parts):
                 last_part = True
-            self.entries_list.append(
-                self.long_entry_creator.new_entry(name_parts[x], x + 1, self.check_sum, last_part)[0])
+            entry, number = self.long_entry_creator.new_entry(name_parts[x], x + 1, self.check_sum, last_part)
+            self.entries_list.append(entry)
 
 
 class LongEntryCreator(Structures.LongDirectoryEntryStructure):
@@ -44,12 +45,13 @@ class LongEntryCreator(Structures.LongDirectoryEntryStructure):
 
     def new_entry(self, name_part, number, check_sum, is_last=False):
         self._set_name(name_part)
-        self._set_number(number)
-        self._set_meta_data(is_last)
+        self._set_number(number, is_last)
+        self._set_meta_data(check_sum)
         return self._join_fields(), number
 
     def _set_name(self, name_part):
         utf_name = name_part.encode("utf-16")
+        utf_name = utf_name[2:]  # todo грязный хак , разобраться почему он добавляет два байта говна
         if len(utf_name) < 26:
             utf_name += b'\x00\x00'
             utf_name = utf_name + b'\xff' * (26 - len(utf_name))
@@ -141,7 +143,7 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
                + self.dir_first_cluster_low + self.dir_file_size
 
     def _is_bad_literal(self, liter):
-        unsupported_values = b'\x22\x2a\x2b\x2c\x2e\x2f\x3a\x3b\x3c\x3d\x3e\x3f\x5b\x5c\x5d\x5e\x7c'
+        unsupported_values = b'\x22\x2a\x2b\x2c\x2f\x3a\x3b\x3c\x3d\x3e\x3f\x5b\x5c\x5d\x5e\x7c'
         return liter < b'\x20' and liter != b'\x05' or liter in unsupported_values
 
     def _encode_name_to_oem_encoding(self, name):
@@ -152,34 +154,37 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
             try:
                 oem_liter = liter.encode("cp866")
                 if self._is_bad_literal(oem_liter):
+                    incorrect_translate = True
                     oem_liter = b'_'
-            except UnicodeEncodeError:
+            except UnicodeEncodeError:  # помоему cp866 сжирает любой шлак, который ей кормят:D
                 oem_liter = b'_'
                 incorrect_translate = True
             oem_string += oem_liter
-        return oem_string , incorrect_translate
+        return oem_string, incorrect_translate
 
     def _clear_name_content(self, name):
         name = name.upper()
-        translated_name = name.strip()
+        translated_name = name.replace(' ', '')
         extension_marker = translated_name[::-1].find('.', 0)
         if extension_marker != -1:
-            translated_name = translated_name[:-extension_marker].strip('.') + '.' + translated_name[-extension_marker:]
-        return translated_name , extension_marker
+            translated_name = translated_name[:-extension_marker].replace('.', '') + '.' + translated_name[
+                                                                                           -extension_marker:]
+        return translated_name, extension_marker
 
-    def _translate_to_short_name(self, oem_string : bytes, extension_marker):
-        doth_position = oem_string.find(b'.',0)
+    def _translate_to_short_name(self, oem_string: bytes, extension_marker):
+        doth_position = oem_string.find(b'.', 0)
+        marker = doth_position
         if doth_position == -1:
-            doth_position = 9
-        oem_name = oem_string[0 : min(8, doth_position)]
+            marker = 9
+        oem_name = oem_string[0: min(8, marker)]
         if extension_marker != -1:
             oem_name += b'.'
-            oem_name += oem_name[len(oem_string) - extension_marker : len(oem_string) - extension_marker + 3]
+            oem_name += oem_string[doth_position + 1: doth_position + 4]
         return oem_name
 
     def _generate_short_name(self, name: str):
         translated_name, extension_marker = self._clear_name_content(name)
-        oem_string, incorrect_translate  = self._encode_name_to_oem_encoding(translated_name)
+        oem_string, incorrect_translate = self._encode_name_to_oem_encoding(translated_name)
         oem_name = self._translate_to_short_name(oem_string, extension_marker)
         return oem_name, incorrect_translate
 
@@ -187,10 +192,10 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
         return not oem_name in self.dir_listing
 
     def _join_name(self, prefix, postfix, extension):
-        if (8 - len(prefix)) <= len(prefix):
+        if (8 - len(prefix)) >= len(postfix):
             return prefix + postfix + b'.' + extension
         else:
-            return prefix[0: -len(postfix)] + postfix + b'.' + extension
+            return prefix[0:8 - len(postfix)] + postfix + b'.' + extension
 
     def _generation_last_value(self, oem_name, marker=False):
         if not marker and len(oem_name) < 13 and self._check_name(oem_name):

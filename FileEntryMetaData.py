@@ -27,13 +27,23 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
         self.attr_string = self.get_attributes_string()
 
     def set_string_args(self, attr_str):
+        if 'l' in attr_str:
+            attr_str += 'rhsv'
+            self.attr_long_name = True
+        else: self.attr_long_name = False
         if 'r' in attr_str:  self.attr_read_only = True
+        else: self.attr_read_only = False
         if 'h' in attr_str: self.attr_hidden = True
+        else: self.attr_hidden = False
         if 's' in attr_str: self.attr_system = True
+        else: self.attr_system = False
         if 'v' in attr_str: self.attr_volume_id = True
+        else: self.attr_volume_id = False
         if 'd' in attr_str: self.attr_directory = True
+        else : self.attr_directory = False
         if 'a' in attr_str: self.attr_archive = True
-        if 'l'in attr_str:  self.attr_long_name = True
+        else: self.attr_archive = False
+
         self._calc_attribute_byte()
         self.attr_string = self.get_attributes_string()
 
@@ -53,7 +63,7 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
 
     @property
     def attribute_byte(self):
-        return  self.attribute_byte
+        return  self._attribute_byte
 
     def read_only(self):
         return self.attr_read_only

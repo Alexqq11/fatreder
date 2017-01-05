@@ -40,14 +40,23 @@ class BootSectorParser(Structures.FatBootSectorStructure):
         self._root_directory_offset += self.bpb_number_fats * self.bpb_fat_size_32 * self.bpb_bytes_per_sector
         self._fat_size = (self.root_directory_offset - self.fat_zone_offset) // self.bpb_number_fats
         self._fat_offsets_list = self._fat_offsets_list()
+        self._data_clusters_amount = self._calc_data_clusters()
 
+    def _calc_data_clusters(self):
+        data_sectors = self.bpb_total_sectors_32 - (self.root_directory_offset // self.bpb_bytes_per_sector)
+        return data_sectors // self.bpb_sectors_per_cluster
     def _fat_offsets_list(self):
         fats_offsets = []
         for fat_number in range(self.bpb_number_fats):
             current_sector = self.bpb_reserved_region_sectors_count + self.bpb_fat_size_32 * fat_number
             fats_offsets.append(current_sector * self.bpb_bytes_per_sector)
         return tuple(fats_offsets)
-
+    @property
+    def data_clusters_amount(self):
+        return self._data_clusters_amount
+    @property
+    def max_allocation(self):
+        return self.data_clusters_amount + 2
     @property
     def cluster_size(self):  # use it
         return self._cluster_size
