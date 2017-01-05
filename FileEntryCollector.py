@@ -68,7 +68,7 @@ class FileEntry(Structures.FileEntryStructure):
 
     @property
     def size(self):
-        return self.size
+        return self._size
 
     @property
     def long_name(self):

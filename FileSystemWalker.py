@@ -154,7 +154,7 @@ class FileSystemUtil:
     def rename(self, path, new_name):
         destination_dir, file_source, file_name = self._pre_operation_processing(path)
         self.file_writer.rename(new_name, destination_dir, file_source)
-
+        self.refresh()
     def transfer(self, from_path, to_path):
         destination_dir, error = self._change_directory(to_path)
         if error:
@@ -162,6 +162,7 @@ class FileSystemUtil:
             pass
         file_dir, file_source, file_name = self._pre_operation_processing(from_path)
         self.file_writer.transfer_file(destination_dir, file_source)
+        self.refresh()
 
     def new_directory(self, path):
         destination_dir, file_source, file_name = self._pre_operation_processing(path)
@@ -169,6 +170,7 @@ class FileSystemUtil:
             # race file alredy exist exception
             pass
         self.file_writer.new_file(file_name, "d", destination_dir)
+        self.refresh()
 
     def copy_on_image(self, from_path, to_path):
         destination_dir, error = self._change_directory(to_path)
@@ -177,11 +179,15 @@ class FileSystemUtil:
             pass
         file_dir, file_source, file_name = self._pre_operation_processing(from_path)
         self.file_writer.copy_file(destination_dir, file_source)
+        self.refresh()
 
     def remove_file(self, file_mame, recoverable=True, clean=False):
         dir_entry = self.working_directory.find(file_mame, "by_name_file")  # todo here dir entry none
         if dir_entry:
             self.file_writer.delete_directory_or_file(dir_entry, recoverable, clean)
+        self.refresh()
 
     def get_file_information(self, name):
         return self.working_directory.find(name, "by_name").to_string()
+    def refresh(self):
+        self.working_directory = self.parse_directory(self.working_directory.data_cluster)

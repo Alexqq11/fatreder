@@ -20,7 +20,8 @@ class FileEntryCreator(Structures.FileEntryStructure):
                                                               dir_listing, time)
         self.entries_list.append(entry)
         self.check_sum = check_sum
-        self.create_long_directories_entries(name)
+        if name not in ['.','..']:
+            self.create_long_directories_entries(name)
         return self.entries_list
 
     def split_name(self, name):
@@ -102,14 +103,29 @@ class ShortEntryCreator(Structures.ShortDirectoryEntryStructure):
                 check_sum = unsigned_char(unsigned_char(check_sum >> 0x1).value + x).value
         return check_sum
 
-    def _write_short_name(self, name):  # default_correct_name
-        marker = name.split(b'.')
-        self.dir_name = marker[0] + (b'\x20' * (12 - len(name))) + marker[1]
+    def _write_short_name(self, oem_name):
+        marker = None
+        name = None
+        extension = None
+        if oem_name not in [b".", b".."] :# default_correct_name
+            marker = oem_name.split(b'.')
+            marker.append(b'')
+            name , extension = marker[0], marker[1]
+            name = name[0:8]
+            extension = extension[0:3]
+        else:
+            name = oem_name
+            extension = b''
+        temp = name + (b'\x20' * (11 - len(name) -len(extension) )) + extension
+        self.dir_name = temp
 
     def _set_name(self, name):
-        oem_name, incorrect_translate = self._generate_short_name(name)
-        oem_name = self._generation_last_value(oem_name, incorrect_translate)
-        self._write_short_name(oem_name)
+        if name not in [".", ".."]:
+            oem_name, incorrect_translate = self._generate_short_name(name)
+            oem_name = self._generation_last_value(oem_name, incorrect_translate)
+            self._write_short_name(oem_name)
+        else:
+            self._write_short_name(name.encode("cp866"))
 
     def _set_attributes(self, attr):
         temp_attr = FileEntryMetaData.DirectoryAttributesGetter(attr, True)

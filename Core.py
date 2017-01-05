@@ -71,9 +71,17 @@ if __name__ == "__main__":
         elif (args[0].lower() == 'info'):
             print(c.file_system_utils.get_file_information(args[1]))
         elif (args[0].lower() == 'help'):
-            print("cd , ls . pwd, info , exit, help")
+            print("cd , ls . pwd, info ,cp, mkdir, rn, ts, exit, help")
         elif (args[0].lower() == 'exit'):
             break
+        elif (args[0].lower() == 'mkdir'):
+            c.file_system_utils.new_directory(join_name(args))
+        elif (args[0].lower() == 'cp'):
+            c.file_system_utils.copy_on_image(args[1] , args[2])
+        elif (args[0].lower() == 'rn'):
+            c.file_system_utils.rename(args[1], args[2])
+        elif (args[0].lower() == 'ts'):
+            c.file_system_utils.transfer(args[1],args[2])
         elif (args[0].lower() == 'rm-r'):
             c.file_system_utils.remove_file(join_name(args))
         elif (args[0].lower() == 'rm-a'):

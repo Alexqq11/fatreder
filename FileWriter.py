@@ -22,48 +22,53 @@ class FileWriter():
         status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)
         return status
 
-    def allocate_place(self, size_in_bytes):
+    def allocate_place(self, size_in_bytes, clear_allocated_area=True):
         """
         return first_data_cluster of allocated area and operation status
         """
         clusters_amount = self.count_clusters(size_in_bytes)
-        return  self.core.fat_tripper.allocate_place(clusters_amount)
+        data_cluster , operation_status = self.core.fat_tripper.allocate_place(clusters_amount)
+        if operation_status:
+            self.delete_data_clusters(data_cluster)
+        return  data_cluster , operation_status
 
     def get_file_allocation_offsets(self, cluster_number):
         return self.core.fat_tripper.get_file_clusters_offsets_list(cluster_number)
 
-    def find_place_for_entry_on_current_cluster(self, entries_number):# something wrong here
-        directory_offset = self.core.fat_bot_sector.calc_cluster_offset()
-        offset = directory_offset
+    def find_place_for_entry_on_current_cluster(self, cluster_offset , entries_number , entries_offsets_in, allocation_status_in):# something wrong here
+        offset = cluster_offset
+        start_offset = cluster_offset
+        entries_offsets = entries_offsets_in
+        allocation_status = allocation_status_in
         count = 0
-        start_offset = 0
-        start_offset_set = False
-        cache = ([], False)
-        while offset < self.cluster_size + directory_offset:
+        while offset < self.cluster_size + cluster_offset:
             check_byte = self.image_reader.get_data_global(offset, 1)
             if check_byte in [b'\x00', b'\xe5']:
-                if not start_offset_set:
+                if count == 0:
                     start_offset = offset
-                    start_offset_set = True
                 count += 1
                 if count == entries_number:
-                    cache = ([offset for offset in range(start_offset, offset + 1, self.entry_size)], True)
+                    allocation_status = True
                     break
             else:
                 count = 0
-                start_offset = 0
-                start_offset_set = False
             offset += self.entry_size
-        return cache
+            # entries_offsets = [offset for offset in range(start_offset, offset + 1, self.entry_size)]
+        entries_offsets = [offset for offset in range(start_offset, start_offset + count * self.entry_size , self.entry_size)]
+        # cdif count == 0: entries_offsets = []
+        return entries_offsets , allocation_status
 
     def find_place_for_entry(self, directory_start_cluster, entries_number):
-        clusters = self.core.fat_tripper.get_file_clusters_list(directory_start_cluster)
-        cache = ([], False)
-        for cluster in clusters:
-            cache = self.find_place_for_entry_on_current_cluster(entries_number) #something wrong here
-            if cache[0]:
+        clusters_offsets = self.core.fat_tripper.get_file_clusters_offsets_list(directory_start_cluster)
+        entries_offsets = []
+        allocation_status = False
+        for cluster_offset in clusters_offsets:
+            if allocation_status:
                 break
-        return cache
+            else:
+                entries_offsets , allocation_status = self.find_place_for_entry_on_current_cluster(cluster_offset, entries_number , entries_offsets, allocation_status) #something wrong here
+
+        return entries_offsets, allocation_status
 
     def not_found_processing(self, directory_data_cluster):
         return self.extend_file(directory_data_cluster, self.cluster_size)
@@ -80,37 +85,46 @@ class FileWriter():
                 if not (correct_successfully and found_successfully):
                     # race no memory exception
                     pass
-            for x in range(len(entry_place)):
-                self.image_reader.set_data_global(entry_place[x], entry_entries[x])
+            self.copy_entry_writes(entry_place,entry_entries)
+            if "d" in attr:
+                self._add_directory_writes(destination_directory, start_cluster)
+
         else:
             # race no memory exception
             pass
-
+    def _add_directory_writes(self, parent_directory: DiSt.Directory , dir_data_cluster):
+        parent_entries = self.file_entry_creator.new_entry('..', 'd', parent_directory.data_cluster ,self.cluster_size, tuple())
+        current_entries = self.file_entry_creator.new_entry('.','d', dir_data_cluster, self.cluster_size,tuple())
+        entry_entries = [parent_entries[0],current_entries[0]]
+        entry_place, found_successfully = self.find_place_for_entry(dir_data_cluster, 2)
+        self.copy_entry_writes(entry_place, entry_entries)
 
     def rename(self,new_name, destination_directory : DiSt.Directory,file_source : FeC.FileEntry):
-        entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster, len(file_source.entries_offsets))
+        dir_listing = destination_directory.short_names
+        entry_entries = self.file_entry_creator.new_entry(new_name, file_source.attr_string, file_source.data_cluster, file_source.size, dir_listing, file_source.datetime)
+        entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
+                                                                    len(entry_entries))
         if not found_successfully:
             correct_successfully = self.not_found_processing(destination_directory.data_cluster)
-            entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster, len(file_source.entries_offsets))
+            entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
+                                                                        len(entry_entries))
             if not (correct_successfully and found_successfully):
                 # race no memory exception
                 pass
-        dir_listing = destination_directory.short_names
-        entry_entries = self.file_entry_creator.new_entry(new_name, file_source.attr_string, file_source.data_cluster, file_source.size, dir_listing, file_source.datetime)
         self.copy_entry_writes(entry_place, entry_entries)
         self.delete_file_entry(file_source.entries_offsets, True)
 
 
     def transfer_file(self,destination_directory : DiSt.Directory,file_source : FeC.FileEntry):
-        entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster, len(file_source.entries_offsets))
+        dir_listing = destination_directory.short_names
+        entry_entries = self.file_entry_creator.new_entry(file_source.name, file_source.attr_string, file_source.data_cluster, file_source.size, dir_listing, file_source.datetime)
+        entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster, len(entry_entries))
         if not found_successfully:
             correct_successfully = self.not_found_processing(destination_directory.data_cluster)
-            entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster, len(file_source.entries_offsets))
+            entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,len(entry_entries))
             if not (correct_successfully and found_successfully):
                 # race no memory exception
                 pass
-        dir_listing = destination_directory.short_names
-        entry_entries = self.file_entry_creator.new_entry(file_source.name, file_source.attr_string, file_source.data_cluster, file_source.size, dir_listing, file_source.datetime)
         self.copy_entry_writes(entry_place, entry_entries)
         self.delete_file_entry(file_source.entries_offsets, True)
 
@@ -119,17 +133,19 @@ class FileWriter():
 
 
     def copy_file(self,destination_directory : DiSt.Directory, file_source : FeC.FileEntry):
-        entry_place , found_successfully = self.find_place_for_entry(destination_directory.data_cluster, len(file_source.entries_offsets)) #TODO extend dir if it need
-        first_data_cluster, allocated_successfully = self.allocate_place(file_source.size)
+         #TODO extend dir if it need
+        first_data_cluster, allocated_successfully = self.allocate_place(file_source.size) # TODO  don't belive Size attr,  count it itself
         if allocated_successfully:
+            dir_listing = destination_directory.short_names
+            entry_entries = self.file_entry_creator.new_entry(file_source.name, file_source.attr_string, first_data_cluster, file_source.size, dir_listing)
+            entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
+                                                                        len(entry_entries))
             if not found_successfully:
                 correct_successfully = self.not_found_processing(destination_directory.data_cluster)
-                entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,len(file_source.entries_offsets))
+                entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,len(entry_entries))
                 if not (correct_successfully and found_successfully):
                     # race no memory exception
                     pass
-            dir_listing = destination_directory.short_names
-            entry_entries = self.file_entry_creator.new_entry(file_source.name, file_source.attr_string, first_data_cluster, file_source.size, dir_listing)
             self.copy_entry_writes(entry_place, entry_entries)
             self.copy_file_data(file_source, first_data_cluster)
         else:
@@ -138,7 +154,7 @@ class FileWriter():
 
 
     def copy_entry_writes (self, entry_place, entry_entries ):
-        entry_place = entry_place.reverse() # todo optimaze it
+        entry_place.reverse() # todo optimaze it
         for x in range(len(entry_place)):
             self.image_reader.set_data_global(entry_place[x], entry_entries[x])
 
