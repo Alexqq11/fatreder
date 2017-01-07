@@ -1,6 +1,10 @@
 import FileReader as FR
 import FileWriter as FW
-
+import DirectoriesStructures
+import FileEntryCollector as FeC
+import FileEntryCreator as FeCr
+import FatReaderExceptions
+import re
 
 # import Core
 
@@ -67,8 +71,7 @@ class FileSystemUtil:
         if status:
             self.working_directory = directory
         else:
-            # race directory not found error
-            pass
+            raise FatReaderExceptions.DirectoryDoesNotExistException()
 
     def get_working_directory_information(self, names=True, datetime=False, attributes=False, hidden=False):
         info = []
@@ -118,15 +121,13 @@ class FileSystemUtil:
         file_source = None
         destination_dir = None
         if error:
-            # race ilegal path expected exception
-            pass
+            raise FatReaderExceptions.InvalidPathException()
         if file_name == '.':
             new_path1 = new_path + './'
             new_path2 = new_path + '../'
             new_dir, error = self._change_directory(new_path1)
             if error:
-                # race ilegal path expected exception
-                pass
+                raise FatReaderExceptions.InvalidPathException()
             new_dir_data_cluster = new_dir.data_cluster
             new_dir, error = self._change_directory(new_path2)
             file_source = new_dir.find(new_dir_data_cluster, "by_address")
@@ -136,8 +137,7 @@ class FileSystemUtil:
             new_path2 = new_path + '../'
             new_dir, error = self._change_directory(new_path1)
             if error:
-                # race ilegal path expected exception
-                pass
+                raise FatReaderExceptions.InvalidPathException()
             new_dir_data_cluster = new_dir.data_cluster
             new_dir, error = self._change_directory(new_path2)
             file_source = new_dir.find(new_dir_data_cluster, "by_address")
@@ -145,8 +145,7 @@ class FileSystemUtil:
         else:
             new_dir, error = self._change_directory(new_path)
             if error:
-                # race ilegal path expected exception
-                pass
+                raise FatReaderExceptions.InvalidPathException()
             file_source = new_dir.find(file_name, "by_name")
             destination_dir = new_dir
         return destination_dir, file_source, file_name
@@ -159,25 +158,32 @@ class FileSystemUtil:
     def transfer(self, from_path, to_path):
         destination_dir, error = self._change_directory(to_path)
         if error:
-            # race invalid path
-            pass
+            raise FatReaderExceptions.InvalidPathException()
         file_dir, file_source, file_name = self._pre_operation_processing(from_path)
         self.file_writer.transfer_file(destination_dir, file_source)
         self.refresh()
 
-    def new_directory(self, path):
-        destination_dir, file_source, file_name = self._pre_operation_processing(path)
-        if not file_source:
-            # race file alredy exist exception
-            pass
-        self.file_writer.new_file(file_name, "d", destination_dir)
-        self.refresh()
+    def new_directory(self, path , attr = "d",program_data = None):
+        destination_dir = None
+        file_source = None
+        file_name = None
+        if not program_data:
+            destination_dir, file_source, file_name = self._pre_operation_processing(path)
+            if not file_source:
+                FatReaderExceptions.FileAlreadyExistException()
+        else:
+            destination_dir = program_data.destination_dir
+            file_name = program_data.file_source.name
+            attr = program_data.file_source.attr_string
+        start_cluster = self.file_writer.new_file(file_name, attr, destination_dir)
+        if not program_data:
+            self.refresh()
+        return  start_cluster
 
     def copy_on_image(self, from_path, to_path):
         destination_dir, error = self._change_directory(to_path)
         if error:
-            # race invalid path
-            pass
+            raise FatReaderExceptions.InvalidPathException()
         file_dir, file_source, file_name = self._pre_operation_processing(from_path)
         self.file_writer.copy_file(destination_dir, file_source)
         self.refresh()
@@ -193,3 +199,73 @@ class FileSystemUtil:
 
     def refresh(self):
         self.working_directory = self.parse_directory(self.working_directory.data_cluster)
+
+    def _file_exist_name_file_source_path(self,destination_dir : DirectoriesStructures.Directory,file_source : FeC.FileEntry):
+        pattern= re.compile("[^.]\((?P<folder>\d+)\)$|\((?P<file>\d+)\)\.[^\.]*$")
+        pattern_end = re.compile("(\.)[^\.]*$")
+        temp_file_source = destination_dir.find(file_source.name, "by_name")
+        while temp_file_source:
+            m = pattern.search(file_source.name)
+            number = ""
+            new_name = ""
+            n = m
+            if m:
+                result = m.groupdict()
+                accessor = "file"
+                if result["folder"]:
+                    accessor = "folder"
+                number = str(int(result[accessor]) + 1)
+            else:
+                number = '(1)'
+                n = pattern_end.search(file_source.name)
+            if not n:
+                new_name = file_source.name + number
+            else:
+                m = n
+                new_name = file_source.name[0:m.start(2)] + number + file_source.name[m.end(2):]
+            #temp_creator = FeCr.ShortEntryCreator()
+            #temp_creator.dir_listing = []
+            #temp_creator._set_name(new_name)
+            #file_source._long_name = new_name
+            #file_source._short_name = temp_creator.dir_name.decode('cp866') # бага найдена мы ищем одно и тоже но проблема с нонами
+            temp_file_source = destination_dir.find(new_name, "by_name")
+            file_source._long_name = new_name
+            #file_source._short_name = temp_creator.dir_name.decode('cp866')
+        return  file_source
+
+
+    def copy_directory(self, from_path , to_path):
+        file_dir, file_source, file_name = self._pre_operation_processing(from_path)
+        if not file_source.attributes.directory:
+            raise FatReaderExceptions.NotADirectoryException()
+        destination_dir, error = self._change_directory(to_path)
+        if error:
+            raise  FatReaderExceptions.InvalidPathException()
+        file_source = self._file_exist_name_file_source_path(destination_dir, file_source)
+        start_cluster =self.new_directory(None, "", CopyNewDirIMetaData(destination_dir, file_source))
+        to_dir = self.parse_directory(start_cluster)
+        from_dir = self.parse_directory(file_source.data_cluster)
+        self._write_copy_data(from_dir, to_dir)
+        self.refresh()
+
+    def _write_copy_data(self,from_dir : DirectoriesStructures.Directory , to_dir : DirectoriesStructures.Directory):
+        for files in from_dir.get_files_sources():
+            self.file_writer.copy_file(to_dir, files)
+        for dirs in from_dir.get_files_sources():
+            start_cluster = self.new_directory(None, "", CopyNewDirIMetaData(to_dir, dirs))
+            new_to_dir = self.parse_directory(start_cluster)
+            new_from_dir = self.parse_directory(dirs.data_cluster)
+            self._write_copy_data(new_from_dir, new_to_dir)
+
+
+class CopyNewDirIMetaData:
+    def __init__(self, destination_dir, file_source):
+        self._file_source = file_source
+        self._destination_dir = destination_dir
+
+    @property
+    def destination_dir(self):
+        return  self._destination_dir
+    @property
+    def file_source(self):
+        return self._file_source

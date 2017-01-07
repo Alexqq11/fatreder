@@ -38,7 +38,6 @@ class Directory:
     @property
     def parent_directory_offset(self):
         return self._parent_data_offset
-
     def _init_search_dict(self):
         self.searching_dict = {"by_address": lambda value, iterable: value == iterable.data_cluster,
                                'by_name_dir': lambda value, iterable: iterable.is_correct_name(value) and
@@ -57,7 +56,7 @@ class Directory:
             self._parent_data_cluster = parent_entry.data_cluster
             self._parent_data_offset = parent_entry.data_offset
             self._root_status = False
-        else:
+        elif len(file_entries_list):
             if file_entries_list[0].attributes.volume_id:
                 self._self_data_cluster = 2
                 self._self_data_offset = file_entries_list[0].entries_offsets[0]
@@ -66,6 +65,8 @@ class Directory:
                 self._root_status = True
             else:
                 pass  # todo rase here something
+        else:
+            pass
 
     def get_file_data_cluster(self, file_name):  # todo make it more universal in future
         entry = self.find(file_name, "by_name")
@@ -76,6 +77,11 @@ class Directory:
             return True, value
         else:  # todo reformate this
             return False, 2
+    def get_directories_sources(self):
+        return filter(lambda x: x.attributes.directory, self.entries_list)
+
+    def get_files_sources(self):
+        return filter(lambda x: not x.attributes.directory, self.entries_list)
 
     def find(self, value, key):  # todo it with func dict
         if key in self.searching_dict:

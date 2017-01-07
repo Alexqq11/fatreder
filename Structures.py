@@ -13,7 +13,6 @@ class ShortDirectoryEntryStructure:
         self.dir_first_cluster_low = None  # 26 2 младшее слово первого кластера (склей их и будет тебе счастье
         self.dir_file_size = None  # 28 4
         self.entry_size = 32  # if fat 32
-        self.fat_entry_number = None  # parsed high and low words
 
 
 class FileEntryStructure:

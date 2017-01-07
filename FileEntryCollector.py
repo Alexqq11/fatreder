@@ -1,6 +1,6 @@
 import ctypes
 import struct
-
+import ImageWorker
 import FileEntryMetaData as FEntryMD
 import Structures
 
@@ -131,20 +131,31 @@ class FileEntry(Structures.FileEntryStructure):
 
 
 class LongEntryReader(Structures.LongDirectoryEntryStructure):
-    def __init__(self, image_reader, entry_start_offset):
+    def __init__(self, image_reader : ImageWorker.ImageReader, entry_start_offset , data = None):
         super().__init__()
-        image_reader.set_global_offset(entry_start_offset)
-        self.ldir_order = image_reader.get_data_local(0, 1)  # 0 1
-        self.ldir_name1 = image_reader.get_data_local(1, 10)  # 1 10
-        self.ldir_attribute = image_reader.get_data_local(11, 1)  # 11 1
-        self.ldir_type = image_reader.get_data_local(12, 1)  # 12 1
-        self.ldir_check_sum = image_reader.get_data_local(13, 1, True)  # 13 1
-        self.ldir_name2 = image_reader.get_data_local(14, 12)  # 14 12
-        self.ldir_first_cluster_low = image_reader.get_data_local(26, 2)  # 26 2 must be zero
-        self.ldir_name3 = image_reader.get_data_local(28, 4)  # 28 4
+        self._data = None
+        if not data:
+            image_reader.set_global_offset(entry_start_offset)
+            self._data = image_reader.get_data_local(0,32)
+        else:
+            self._data = data # check data ?
+        self.image_reader = image_reader
+        self.ldir_order = self.get_data(0, 1)  # 0 1
+        self.ldir_name1 = self.get_data(1, 10)  # 1 10
+        self.ldir_attribute = self.get_data(11, 1)  # 11 1
+        self.ldir_type = self.get_data(12, 1)  # 12 1
+        self.ldir_check_sum = self.get_data(13, 1, True)  # 13 1
+        self.ldir_name2 = self.get_data(14, 12)  # 14 12
+        self.ldir_first_cluster_low = self.get_data(26, 2)  # 26 2 must be zero
+        self.ldir_name3 = self.get_data(28, 4)  # 28 4
         self.entry_size = 32  # for fat 32
         self._entry_start_offset = entry_start_offset
 
+    def get_data(self, start, size, parse_int=False):
+        data = self._data[start: start + size]
+        if parse_int:
+            data = self.image_reader.convert_to_int(data,size)
+        return data
     @property
     def entry_start_offset(self):
         return self._entry_start_offset
@@ -158,26 +169,38 @@ class LongEntryReader(Structures.LongDirectoryEntryStructure):
 
 
 class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
-    def __init__(self, image_reader, entry_start_offset):
+    def __init__(self, image_reader : ImageWorker.ImageReader, entry_start_offset, data=None):
         super().__init__()
-        image_reader.set_global_offset(entry_start_offset)
-        self.dir_name = image_reader.get_data_local(0, 11)
-        self.dir_attributes = image_reader.get_data_local(11, 1)
-        self.dir_nt_reserved = image_reader.get_data_local(12, 1)
-        self.dir_create_time_tenth = image_reader.get_data_local(13, 1)  # 13 1
-        self.dir_create_time = image_reader.get_data_local(14, 2, True)  # 14 2
-        self.dir_create_date = image_reader.get_data_local(16, 2, True)  # 16 2
-        self.dir_last_access_date = image_reader.get_data_local(18, 2, True)  # 18 2
-        self.dir_first_cluster_high = image_reader.get_data_local(20, 2)  # 20 2 // старшее слово номера первого класте
-        self.dir_write_time = image_reader.get_data_local(22, 2, True)  # 22 2 время последней записи , создание тоже з
-        self.dir_write_date = image_reader.get_data_local(24, 2, True)  # 24 2 дата последней записи,создание файла тож
-        self.dir_first_cluster_low = image_reader.get_data_local(26, 2)  # 26 2 младшее слово первого кластера
-        self.dir_file_size = image_reader.get_data_local(28, 4, True)  # 28 4
-        self.fat_entry_number = image_reader.convert_to_int(self.dir_first_cluster_low + self.dir_first_cluster_high, 4)
+        self._data = None
+        if not data:
+            image_reader.set_global_offset(entry_start_offset)
+            self._data = image_reader.get_data_local(0, 32)
+        else:
+            self._data = data  # check data ?
+        self.image_reader = image_reader
+        self.dir_name = self.get_data(0, 11)
+        self.dir_attributes = self.get_data(11, 1)
+        self.dir_nt_reserved = self.get_data(12, 1)
+        self.dir_create_time_tenth = self.get_data(13, 1)  # 13 1
+        self.dir_create_time = self.get_data(14, 2, True)  # 14 2
+        self.dir_create_date = self.get_data(16, 2, True)  # 16 2
+        self.dir_last_access_date = self.get_data(18, 2, True)  # 18 2
+        self.dir_first_cluster_high = self.get_data(20, 2)  # 20 2 // старшее слово номера первого класте
+        self.dir_write_time = self.get_data(22, 2, True)  # 22 2 время последней записи , создание тоже з
+        self.dir_write_date = self.get_data(24, 2, True)  # 24 2 дата последней записи,создание файла тож
+        self.dir_first_cluster_low = self.get_data(26, 2)  # 26 2 младшее слово первого кластера
+        self.dir_file_size = self.get_data(28, 4, True)  # 28 4
         self._check_sum = self._calc_check_sum()
         self.datetime = FEntryMD.DateTimeFormat(self.dir_write_date, self.dir_write_time)  # todo attention if zero
         self._attributes = FEntryMD.DirectoryAttributesGetter(self.dir_attributes)
         self._entry_start_offset = entry_start_offset
+
+    def get_data(self, start, size, parse_int=False):
+        data = self._data[start: start + size]
+        if parse_int:
+            data = self.image_reader.convert_to_int(data,size)
+        return data
+
 
     @property
     def attributes(self):

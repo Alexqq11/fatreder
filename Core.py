@@ -2,6 +2,7 @@ import FatTableReader as Ftw
 import FileSystemWalker as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
+from  FatReaderExceptions import *
 
 """"reserved region class """
 """ bs - boot sector"""
@@ -59,45 +60,50 @@ if __name__ == "__main__":
 
 
     while (True):
-        inp = input("]>")
-        args = [x for x in inp.split()]
-        if (args[0].lower() == 'cd'):
-            c.file_system_utils.change_directory(join_name(args))
-        elif (args[0].lower() == 'ls'):
-            info = c.file_system_utils.get_working_directory_information()
-            for entry in info:
-                print(entry)
-        elif (args[0].lower() == 'pwd'):
-            print(c.file_system_utils.calculate_directory_path())
-        elif (args[0].lower() == 'info'):
-            print(c.file_system_utils.get_file_information(args[1]))
-        elif (args[0].lower() == 'help'):
-            print("cd , ls . pwd, info ,cp, mkdir, rn, ts, exit, help")
-        elif (args[0].lower() == 'exit'):
-            break
-        elif (args[0].lower() == 'mkdir'):
-            c.file_system_utils.new_directory(join_name(args))
-        elif (args[0].lower() == 'cp'):
-            c.file_system_utils.copy_on_image(args[1], args[2])
-        elif (args[0].lower() == 'rn'):
-            c.file_system_utils.rename(args[1], args[2])
-        elif (args[0].lower() == 'ts'):
-            c.file_system_utils.transfer(args[1], args[2])
-        elif (args[0].lower() == 'rm-r'):
-            c.file_system_utils.remove_file(join_name(args))
-        elif (args[0].lower() == 'rm-a'):
-            c.file_system_utils.remove_file(join_name(args), recoverable=False)
-        elif (args[0].lower() == 'rm-c'):
-            c.file_system_utils.remove_file(join_name(args), clean=True)
-        elif (args[0].lower() == 'cat'):
-            data = c.file_system_utils.cat_data(args[1])
-            i = iter(data)
-            encoding = 'utf-8'
-            if len(args) == 3:
-                encoding = args[2]
-            print(next(i).decode(encoding))
-        else:
-            print('command not found')
+        try:
+            inp = input("]>")
+            args = [x for x in inp.split()]
+            if (args[0].lower() == 'cd'):
+                c.file_system_utils.change_directory(join_name(args))
+            elif (args[0].lower() == 'ls'):
+                info = c.file_system_utils.get_working_directory_information()
+                for entry in info:
+                    print(entry)
+            elif (args[0].lower() == 'pwd'):
+                print(c.file_system_utils.calculate_directory_path())
+            elif (args[0].lower() == 'info'):
+                print(c.file_system_utils.get_file_information(args[1]))
+            elif (args[0].lower() == 'help'):
+                print("cd , ls . pwd, info ,cp, mkdir, rn, ts, exit, help")
+            elif (args[0].lower() == 'exit'):
+                break
+            elif (args[0].lower() == 'mkdir'):
+                c.file_system_utils.new_directory(join_name(args))
+            elif (args[0].lower() == 'cp'):
+                c.file_system_utils.copy_on_image(args[1], args[2])
+            elif (args[0].lower() == 'cp-d'):
+                c.file_system_utils.copy_directory(args[1], args[2])
+            elif (args[0].lower() == 'rn'):
+                c.file_system_utils.rename(args[1], args[2])
+            elif (args[0].lower() == 'ts'):
+                c.file_system_utils.transfer(args[1], args[2])
+            elif (args[0].lower() == 'rm-r'):
+                c.file_system_utils.remove_file(join_name(args))
+            elif (args[0].lower() == 'rm-a'):
+                c.file_system_utils.remove_file(join_name(args), recoverable=False)
+            elif (args[0].lower() == 'rm-c'):
+                c.file_system_utils.remove_file(join_name(args), clean=True)
+            elif (args[0].lower() == 'cat'):
+                data = c.file_system_utils.cat_data(args[1])
+                i = iter(data)
+                encoding = 'utf-8'
+                if len(args) == 3:
+                    encoding = args[2]
+                print(next(i).decode(encoding))
+            else:
+                print('command not found')
+        except FatReaderException:
+            pass
 
     """""""""
     c.file_system_utils.change_directory('/архЭВм/Конспекты от Артура/')

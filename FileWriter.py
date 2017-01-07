@@ -2,6 +2,7 @@ import DirectoriesStructures as DiSt
 import FileEntryCollector as FeC
 import FileEntryCreator
 import FileReader as Fr
+import FatReaderExceptions
 
 
 class FileWriter:
@@ -35,7 +36,14 @@ class FileWriter:
 
     def get_file_allocation_offsets(self, cluster_number):
         return self.core.fat_tripper.get_file_clusters_offsets_list(cluster_number)
-
+    def get_file_allocated_clusters(self,cluster_number):
+        return  self.core.fat_tripper.get_file_clusters_list(cluster_number)
+    def extend_file_allocation(self, first_cluster, size_in_clusters):
+        status = self.core.fat_tripper.extend_file(first_cluster,size_in_clusters)
+        if not status:
+            raise FatReaderExceptions.AllocationMemoryOutException
+    def remove_excessive_allocation(self,new_end_cluster):
+        self.core.fat_tripper.delete_file_fat_chain(new_end_cluster, True)
     def find_place_for_entry_on_current_cluster(self, cluster_offset, entries_number):  # something wrong here
         offset = cluster_offset
         start_offset = cluster_offset
@@ -86,15 +94,14 @@ class FileWriter:
                 entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
                                                                             len(entry_entries))
                 if not (correct_successfully and found_successfully):
-                    # race no memory exception
-                    pass
+                    raise FatReaderExceptions.AllocationMemoryOutException()
             self.copy_entry_writes(entry_place, entry_entries)
             if "d" in attr:
                 self._add_directory_writes(destination_directory, start_cluster)
+            return start_cluster
 
         else:
-            # race no memory exception
-            pass
+            raise FatReaderExceptions.AllocationMemoryOutException()
 
     def _add_directory_writes(self, parent_directory: DiSt.Directory, dir_data_cluster):
         parent_entries = self.file_entry_creator.new_entry('..', 'd', parent_directory.data_cluster, self.cluster_size,
@@ -114,9 +121,8 @@ class FileWriter:
             correct_successfully = self.not_found_processing(destination_directory.data_cluster)
             entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
                                                                         len(entry_entries))
-            if not (correct_successfully and found_successfully):
-                # race no memory exception
-                pass
+            if not (correct_successfully and found_successfully): # ????? todo
+                raise FatReaderExceptions.AllocationMemoryOutException()
         self.copy_entry_writes(entry_place, entry_entries)
         self.delete_file_entry(file_source.entries_offsets, True)
 
@@ -132,8 +138,7 @@ class FileWriter:
             entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
                                                                         len(entry_entries))
             if not (correct_successfully and found_successfully):
-                # race no memory exception
-                pass
+                raise FatReaderExceptions.AllocationMemoryOutException()
         self.copy_entry_writes(entry_place, entry_entries)
         self.delete_file_entry(file_source.entries_offsets, True)
 
@@ -152,12 +157,11 @@ class FileWriter:
                 entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
                                                                             len(entry_entries))
                 if not (correct_successfully and found_successfully):
-                    # race no memory exception
-                    pass
+                    raise FatReaderExceptions.AllocationMemoryOutException()
             self.copy_entry_writes(entry_place, entry_entries)
             self.copy_file_data(file_source, first_data_cluster)
         else:
-            # race no memory exception
+            raise FatReaderExceptions.AllocationMemoryOutException()
             pass
 
     def copy_entry_writes(self, entry_place, entry_entries):
@@ -166,11 +170,22 @@ class FileWriter:
             self.image_reader.set_data_global(entry_place[x], entry_entries[x])
 
     def copy_file_data(self, file_source: FeC.FileEntry, destination_first_cluster):
+        self._correct_alloc(destination_first_cluster, file_source.data_cluster)
         destination_allocation = self.get_file_allocation_offsets(destination_first_cluster)
         pointer = 0
         for data in self.file_data_reader.parse_non_buffer(file_source.data_cluster):
             self.image_reader.set_data_global(destination_allocation[pointer], data)
             pointer += 1
+    def  _correct_alloc(self , destination_cluster , source_firs_cluster):
+        dest_list = self.get_file_allocated_clusters(destination_cluster)
+        sour_list = self.get_file_allocated_clusters(source_firs_cluster)
+        if len(dest_list) > len(sour_list):
+            self.remove_excessive_allocation(dest_list[len(sour_list) - 1]) # check mistake with 1
+        elif len(dest_list) < len(sour_list):
+            self.extend_file_allocation(dest_list[len(dest_list) -1], len(sour_list) - len(dest_list) )
+        dest_list = self.get_file_allocated_clusters(destination_cluster)
+        pass
+
 
     def delete_directory_or_file(self, file_entry: FeC.FileEntry, recoverable=True, clean=False):
         if clean:
