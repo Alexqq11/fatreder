@@ -3,7 +3,7 @@ import FileSystemWalker as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *
-
+import CUICommandParser
 """"reserved region class """
 """ bs - boot sector"""
 """"bpb bios parameter block """
@@ -58,42 +58,44 @@ if __name__ == "__main__":
             string += args[x] + ' '
         return string[0:-1:1]
 
-
+    CommandParser = CUICommandParser.CommandParsing
     while (True):
         try:
             inp = input("]>")
             args = [x for x in inp.split()]
-            if (args[0].lower() == 'cd'):
-                c.file_system_utils.change_directory(join_name(args))
-            elif (args[0].lower() == 'ls'):
+            command =CommandParser(inp)
+            command.command = args[0]
+            if (args[0] == 'cd'):
+                c.file_system_utils.change_directory(command.path[0])
+            elif (command.command == 'ls'):
                 info = c.file_system_utils.get_working_directory_information()
                 for entry in info:
                     print(entry)
-            elif (args[0].lower() == 'pwd'):
+            elif (command.command == 'pwd'):
                 print(c.file_system_utils.calculate_directory_path())
-            elif (args[0].lower() == 'info'):
+            elif (command.command == 'info'):
                 print(c.file_system_utils.get_file_information(args[1]))
-            elif (args[0].lower() == 'help'):
+            elif (command.command == 'help'):
                 print("cd , ls . pwd, info ,cp, mkdir, rn, ts, exit, help")
-            elif (args[0].lower() == 'exit'):
+            elif (command.command == 'exit'):
                 break
-            elif (args[0].lower() == 'mkdir'):
+            elif (command.command == 'mkdir'):
                 c.file_system_utils.new_directory(join_name(args))
-            elif (args[0].lower() == 'cp'):
+            elif (command.command == 'cp'):
                 c.file_system_utils.copy_on_image(args[1], args[2])
-            elif (args[0].lower() == 'cp-d'):
+            elif (command.command == 'cp-d'):
                 c.file_system_utils.copy_directory(args[1], args[2])
-            elif (args[0].lower() == 'rn'):
+            elif (command.command == 'rn'):
                 c.file_system_utils.rename(args[1], args[2])
-            elif (args[0].lower() == 'ts'):
+            elif (command.command == 'ts'):
                 c.file_system_utils.transfer(args[1], args[2])
-            elif (args[0].lower() == 'rm-r'):
+            elif (command.command == 'rm-r'):
                 c.file_system_utils.remove_file(join_name(args))
-            elif (args[0].lower() == 'rm-a'):
+            elif (command.command == 'rm-a'):
                 c.file_system_utils.remove_file(join_name(args), recoverable=False)
-            elif (args[0].lower() == 'rm-c'):
+            elif (command.command == 'rm-c'):
                 c.file_system_utils.remove_file(join_name(args), clean=True)
-            elif (args[0].lower() == 'cat'):
+            elif (command.command == 'cat'):
                 data = c.file_system_utils.cat_data(args[1])
                 i = iter(data)
                 encoding = 'utf-8'
