@@ -49,8 +49,12 @@ class ImageReader:
             self._set_mapped_image()
         self.image.seek(offset)
         buffer = self.image.read(size)
+        temp_buf = buffer
         if convert_integer:
-            buffer = self.convert_to_int(buffer, size)  # struct.unpack(self._get_parse_mod(size), buffer)[0]
+            try:
+                buffer = self.convert_to_int(buffer, size)
+            except Exception:
+                print(temp_buf, "  ", size, offset)  # struct.unpack(self._get_parse_mod(size), buffer)[0]
         return buffer
 
     def get_data_local(self, local_offset, size, convert_integer=False):
@@ -58,8 +62,13 @@ class ImageReader:
             self._set_mapped_image()
         self.image.seek(self.file_global_offset + local_offset)
         buffer = self.image.read(size)
+        temp_buf = buffer
         if convert_integer:
-            buffer = self.convert_to_int(buffer, size)  # struct.unpack(self._get_parse_mod(size), buffer)[0]
+            try:
+                buffer = self.convert_to_int(buffer, size)
+            except Exception:
+                print(temp_buf, "  ", size)
+        # struct.unpack(self._get_parse_mod(size), buffer)[0]
         return buffer
 
     def close_reader(self):

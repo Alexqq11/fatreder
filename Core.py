@@ -3,7 +3,7 @@ import FileSystemWalker as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *
-import CUICommandParser
+from  CUICommandParser import *
 """"reserved region class """
 """ bs - boot sector"""
 """"bpb bios parameter block """
@@ -44,24 +44,45 @@ class Core:
 
 if __name__ == "__main__":
     c = Core()
-
-    # inp = input("Path to image: ")
     c.init("..\.\dump (1).iso")
-    # c.init(".././test.img")
-    # todo use try except for keys interrypt
-    first_call_cat = True
 
+    def initCommands(c : Core):
+        commands_list = []
+        cd = Command("cd", c.file_system_utils.change_directory,dict())
+        commands_list.append(cd)
+        ls = Command("ls",c.file_system_utils.get_working_directory_information,dict())
+        ls.add_function_flags(("h","ls"),{"hidden": True})
+        ls.add_function_flags(("a", "ls"),{"datetime": True, "attributes": True,"size": True})
+        ls.add_function_flags(("a", "h", "ls"), {"datetime": True, "attributes": True, "size": True, "hidden": True})
+        commands_list.append(ls)
+        rm = Command("rm",c.file_system_utils.remove_file,{"recoverable":False})
+        rm.add_function_flags(tuple("c"), {"recoverable" : False, "clear": True})
+        rm.add_function_flags(tuple("r"), {"recoverable" : True, "clear": False})
+        commands_list.append(rm)
+        cp = Command("cp", None, dict())
+        cp.add_function_flags(tuple("f"), dict(),c.file_system_utils.copy_on_image)
+        cp.add_function_flags(tuple("d"), dict(),c.file_system_utils.copy_directory)
+        commands_list.append(cp)
+        mkdir = Command("mkdir", c.file_system_utils.new_directory,dict())
+        commands_list.append(mkdir)
+        info = Command("info", c.file_system_utils.get_file_information,dict())
+        commands_list.append(info)
+        transfer = Command("transfer",c.file_system_utils.transfer,dict())
+        commands_list.append(transfer)
+        rename = Command("rename", c.file_system_utils.rename, dict())
+        commands_list.append(rename)
+        return  commands_list
 
-    def join_name(args):
-        string = ''
-        for x in range(1, len(args)):
-            string += args[x] + ' '
-        return string[0:-1:1]
-
-    CommandParser = CUICommandParser.CommandParsing
+    command_executor = CommandExecutor(initCommands(c))
     while (True):
         try:
-            inp = input("]>")
+            command_prompt = input("]>")
+            command_executor.execute_command(command_prompt)
+        except FatReaderException:
+            pass
+
+
+            """""""""
             args = [x for x in inp.split()]
             command =CommandParser(inp)
             command.command = args[0]
@@ -104,9 +125,7 @@ if __name__ == "__main__":
                 print(next(i).decode(encoding))
             else:
                 print('command not found')
-        except FatReaderException:
-            pass
-
+       """""""""
     """""""""
     c.file_system_utils.change_directory('/архЭВм/Конспекты от Артура/')
     c.file_system_utils.change_directory('../')

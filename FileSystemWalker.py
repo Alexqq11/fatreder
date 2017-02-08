@@ -5,9 +5,9 @@ import FileEntryCollector as FeC
 import FileEntryCreator as FeCr
 import FatReaderExceptions
 import re
-
+import os.path as pw
 # import Core
-
+import posixpath
 
 class FileSystemUtil:
     def __init__(self, core):  #: Core.Core):
@@ -27,11 +27,13 @@ class FileSystemUtil:
         return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(cluster_number))
 
     def cat_data(self, file_name):
-        entry = self.working_directory.find(file_name, "by_name_file")
-        if entry:
-            addr = entry.data_cluster
+        file_dir, file_source, file_name = self._pre_operation_processing(file_name)
+        if not file_source.attributes.directory:
+            addr = file_source.data_cluster
             for data_part in self.file_reader.parse_non_buffer(addr):
                 yield data_part
+        else:
+            raise FatReaderExceptions.NotAFileException()
 
     def calculate_directory_path(self):
         parent_cluster = self.working_directory.parent_directory_cluster
@@ -73,16 +75,20 @@ class FileSystemUtil:
         else:
             raise FatReaderExceptions.DirectoryDoesNotExistException()
 
-    def get_working_directory_information(self, names=True, datetime=False, attributes=False, hidden=False):
-        info = []
-        for files in self.working_directory.entries_list:
-            info.append(files.to_string())
+    def get_working_directory_information(self, path = "", names=True, datetime=False, attributes=False, hidden=False, size = False):
+        destination_dir = self.working_directory
+        if path:
+            destination_dir, operation_status = self._change_directory(path)
+            if not operation_status:
+                raise FatReaderExceptions.InvalidPathException()
+        info = ""
+        for files in destination_dir.entries_list:
+            info += files.to_string() + "\n"
         return info
+    def __path_parser(self, path):
+        path, file  = posixpath.split(path)
 
-    # todo rewrite rm
-    def find_file_on_path(self):
         pass
-
     def _path_parser(self, path):
         dir = False
         slash_position = 0
@@ -93,7 +99,7 @@ class FileSystemUtil:
         if len(path_list) >= 2:
             if path_list[len(path_list) - 1] == '':
                 dir = True
-                if path_list(len(path_list) - 2) == '':
+                if path_list[len(path_list) - 2] == '':
                     error = True
                 else:
                     file_name = path_list[len(path_list) - 2]
@@ -125,8 +131,8 @@ class FileSystemUtil:
         if file_name == '.':
             new_path1 = new_path + './'
             new_path2 = new_path + '../'
-            new_dir, error = self._change_directory(new_path1)
-            if error:
+            new_dir, operation_status = self._change_directory(new_path1)
+            if not operation_status:
                 raise FatReaderExceptions.InvalidPathException()
             new_dir_data_cluster = new_dir.data_cluster
             new_dir, error = self._change_directory(new_path2)
@@ -135,16 +141,16 @@ class FileSystemUtil:
         elif file_name == '..':
             new_path1 = new_path + '../'
             new_path2 = new_path + '../'
-            new_dir, error = self._change_directory(new_path1)
-            if error:
+            new_dir, operation_status = self._change_directory(new_path1)
+            if not operation_status:
                 raise FatReaderExceptions.InvalidPathException()
             new_dir_data_cluster = new_dir.data_cluster
             new_dir, error = self._change_directory(new_path2)
             file_source = new_dir.find(new_dir_data_cluster, "by_address")
             destination_dir = new_dir
         else:
-            new_dir, error = self._change_directory(new_path)
-            if error:
+            new_dir, operation_status = self._change_directory(new_path)
+            if not operation_status:
                 raise FatReaderExceptions.InvalidPathException()
             file_source = new_dir.find(file_name, "by_name")
             destination_dir = new_dir
@@ -188,14 +194,17 @@ class FileSystemUtil:
         self.file_writer.copy_file(destination_dir, file_source)
         self.refresh()
 
-    def remove_file(self, file_mame, recoverable=True, clean=False):
-        dir_entry = self.working_directory.find(file_mame, "by_name_file")  # todo here dir entry none
-        if dir_entry:
-            self.file_writer.delete_directory_or_file(dir_entry, recoverable, clean)
+    def remove_file(self, file_name, recoverable=True, clean=False):
+        file_dir, file_source, file_name = self._pre_operation_processing(file_name)
+        if not file_source.attributes.directory:
+            self.file_writer.delete_directory_or_file(file_source, recoverable, clean)
+        else:
+            raise FatReaderExceptions.NotAFileException()
         self.refresh()
 
-    def get_file_information(self, name):
-        return self.working_directory.find(name, "by_name").to_string()
+    def get_file_information(self, file_name):
+        file_dir, file_source, file_name = self._pre_operation_processing(file_name)
+        return file_source.to_string()
 
     def refresh(self):
         self.working_directory = self.parse_directory(self.working_directory.data_cluster)

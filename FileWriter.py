@@ -17,11 +17,16 @@ class FileWriter:
     def count_clusters(self, size_in_bytes):  # TODO correct
         return (size_in_bytes + self.cluster_size - 1) // self.cluster_size
 
-    def extend_file(self, directory_start_cluster, size_in_bytes):  # TODO correct
+    def extend_file(self, directory_start_cluster, size_in_bytes):  # TODO correct #make it smart ? and check end of data cluster
         clusters_amount = self.count_clusters(size_in_bytes)
+        if clusters_amount == 0:
+            FatReaderExceptions.ZeroSizeAllocationException()
         clusters = self.core.fat_tripper.get_file_clusters_list(directory_start_cluster)
         extended_cluster = clusters[len(clusters) - 1]
-        status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)
+        status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount) # todo if zero do nothing
+        if status:
+            clusters = self.core.fat_tripper.get_file_clusters_list(extended_cluster)
+            self.delete_data_clusters(clusters[1])
         return status
 
     def allocate_place(self, size_in_bytes, clear_allocated_area=True):
@@ -29,6 +34,8 @@ class FileWriter:
         return first_data_cluster of allocated area and operation status
         """
         clusters_amount = self.count_clusters(size_in_bytes)
+        if clusters_amount == 0:
+            FatReaderExceptions.ZeroSizeAllocationException()
         data_cluster, operation_status = self.core.fat_tripper.allocate_place(clusters_amount)
         if operation_status and clear_allocated_area:
             self.delete_data_clusters(data_cluster)
@@ -36,14 +43,18 @@ class FileWriter:
 
     def get_file_allocation_offsets(self, cluster_number):
         return self.core.fat_tripper.get_file_clusters_offsets_list(cluster_number)
+
     def get_file_allocated_clusters(self,cluster_number):
         return  self.core.fat_tripper.get_file_clusters_list(cluster_number)
+
     def extend_file_allocation(self, first_cluster, size_in_clusters):
         status = self.core.fat_tripper.extend_file(first_cluster,size_in_clusters)
         if not status:
             raise FatReaderExceptions.AllocationMemoryOutException
+
     def remove_excessive_allocation(self,new_end_cluster):
         self.core.fat_tripper.delete_file_fat_chain(new_end_cluster, True)
+
     def find_place_for_entry_on_current_cluster(self, cluster_offset, entries_number):  # something wrong here
         offset = cluster_offset
         start_offset = cluster_offset
@@ -176,6 +187,7 @@ class FileWriter:
         for data in self.file_data_reader.parse_non_buffer(file_source.data_cluster):
             self.image_reader.set_data_global(destination_allocation[pointer], data)
             pointer += 1
+
     def  _correct_alloc(self , destination_cluster , source_firs_cluster):
         dest_list = self.get_file_allocated_clusters(destination_cluster)
         sour_list = self.get_file_allocated_clusters(source_firs_cluster)

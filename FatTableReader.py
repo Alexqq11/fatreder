@@ -27,6 +27,10 @@ class FatTableReader:  # unsafety with out file image error checking
 
     def extend_file(self, last_cluster, amount_of_clusters):
         empty_clusters_list, status = self.find_empty_entries(amount_of_clusters)
+
+        return self._extend_file(empty_clusters_list ,last_cluster, status)
+
+    def _extend_file(self, empty_clusters_list, last_cluster, status):
         if status:
             current_cluster = last_cluster
             for next_cluster in empty_clusters_list:

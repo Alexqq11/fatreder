@@ -79,3 +79,37 @@ class NotADirectoryException(FatReaderException):
     @property
     def error_message(self):
         return self._message
+
+class NotAFileException(FatReaderException):
+    def __init__(self, msg=None):
+        self._message = None
+        if msg:
+            self._message = msg
+        else:
+            self._message = "Not a File"
+        print(self._message)
+
+    pass
+
+    @property
+    def error_message(self):
+        return self._message
+
+class ZeroSizeAllocationException(FatReaderException):
+    def __init__(self, msg=None):
+        self._message = None
+        if msg:
+            self._message = msg
+        else:
+            self._message = "Zero size allocation expected"
+        print(self._message)
+
+    pass
+
+    @property
+    def error_message(self):
+        return self._message
+
+
+
+

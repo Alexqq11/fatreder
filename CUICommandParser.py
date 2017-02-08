@@ -10,7 +10,7 @@ class CommandParser:
             self.parse_command_prompt(command_prompt)
     @property
     def flags(self):
-        return set(self._flags)
+        return tuple(self._flags)
     @property
     def paths(self):
         return self._paths
@@ -26,21 +26,23 @@ class CommandParser:
         self._flags.append(self.command)
         self.other_collections = collected
 
-    def parse_all_path(self, command_prompt : str):
+    def parse_all_path(self, _command_prompt : str):
         path_pattern = re.compile(r'\"(?P<path>.*?)\"')
         path_collector = []
+        command_prompt = _command_prompt
         m = path_pattern.search(command_prompt)
         while m:
             path_dict = m.groupdict()
             path_collector.append(path_dict["path"])
-            command_prompt.replace('"' +path_dict["path"] +'"', '')
+            command_prompt = command_prompt[0:m.start(1)] + command_prompt[m.end(1) +1:]
             m = path_pattern.search(command_prompt)
         path_collector.reverse()
         return command_prompt, path_collector
 
-    def parse_flags(self, command_prompt):
+    def parse_flags(self, _command_prompt):
         args_pattern = re.compile(r"--?(?P<flags>\w+)")
         flag_collector = []
+        command_prompt = _command_prompt
         m = args_pattern.search(command_prompt)
         while m:
             flag_dict = m.groupdict()
@@ -50,7 +52,7 @@ class CommandParser:
                 remove = "--" + flag_dict["flags"]
             else:
                 remove = "-" + flag_dict["flags"]
-            command_prompt.replace(remove, '')
+            command_prompt = command_prompt.replace(remove, '')
             m = args_pattern.search(command_prompt)
         flag_collector.reverse()
         return command_prompt, flag_collector
@@ -63,15 +65,17 @@ class Command:
     def __init__(self, command_name,default_function , default_args):
         self.command_name = command_name
         self.default_function = default_function
-        self.function_dictionary = {set(command_name):(default_function, default_args)}
-    def add_function_flags(self, flags_set, params , function = None ):
+        self.function_dictionary = {(command_name,):(default_function, default_args)}
+    def add_function_flags(self,flags_set, params , function = None ):
         if function:
             self.function_dictionary[flags_set] = (function, params)
         else:
             self.function_dictionary[flags_set] = (self.default_function, params)
-    def execute(self, flag_set: set, dynamic_args):
+    def execute(self, flag_set, dynamic_args):
         func, static_args = self.function_dictionary[flag_set]
-        func(**dynamic_args, **static_args)
+        res = func(*dynamic_args, **static_args)
+        if res:
+            print(res)
 
 class CommandExecutor:
     def __init__(self, commands = None):
