@@ -1,5 +1,5 @@
 import FatTableReader as Ftw
-import FileSystemWalker as Fsw
+import FileSystemUtils as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *

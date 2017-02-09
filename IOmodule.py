@@ -48,8 +48,8 @@ class OSDirectoryReader:
             yield data_chunk
 
 class OSDirectoryWriter:
-    def __init__(self):
-        self.cluster_size = 512
+    def __init__(self, cluster_size):
+        self.cluster_size = cluster_size
 
     def create_dir(self, path, mode=0o777):
         os.makedirs(path, mode)
