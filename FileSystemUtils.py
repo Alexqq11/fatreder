@@ -26,7 +26,8 @@ class FileSystemUtil:
 
     def parse_directory(self, cluster_number):
         return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(cluster_number))
-
+    def cat(self, path, byte = False, text= True , encoding="cp866"):
+        pass
     def cat_data(self, file_name):
         file_dir, file_source, file_name = self._pre_operation_processing(file_name)
         if not file_source.attributes.directory:
@@ -80,7 +81,14 @@ class FileSystemUtil:
             self.working_directory = directory
         else:
             raise FatReaderExceptions.DirectoryDoesNotExistException()
-
+    def ls_recursive(self, path, long=False, all = False ):
+        pass
+    def ls(self, path, long=False, all = False , recursive = False):
+        pass
+    def cp(self, path_from , path_to):
+        pass
+    def rmdir(self, path, clear=False):
+        pass
     def get_working_directory_information(self, path="", names=True, datetime=False, attributes=False, hidden=False,
                                           size=False):
         destination_dir = self.working_directory

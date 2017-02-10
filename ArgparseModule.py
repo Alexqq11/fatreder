@@ -62,6 +62,9 @@ class ArgsParser:
         # pwd
         parser_pwd = subparsers.add_parser("pwd", help="pwd -h, --help",
                                            description='pwd is a command to calculate ful path to working directory in image')
+        # exit
+        parser_exit = subparsers.add_parser("exit", help="exit -h, --help",
+                                           description='exit from fat reader util')
 
         # move
         parser_move = subparsers.add_parser("move", help="move -h, --help",
@@ -73,7 +76,7 @@ class ArgsParser:
                                            description='cat is a command to print file content')
         parser_cat.add_argument(dest='path', metavar='path', nargs=1)  # * - all ? zero or one
         parser_cat.add_argument('-b', '--byte', dest='byte', action='store_true', help='get data in hex stream')
-        parser_cat.add_argument('-t', '--all', dest='all', action='store_true', help='get data in text stream')
+        parser_cat.add_argument('-t', '--text', dest='text', action='store_true', help='get data in text stream')
         parser_cat.add_argument('-e', '--encoding', dest='encoding', action='store', help=' set data encoding')
 
         # rm
@@ -91,3 +94,4 @@ class ArgsParser:
                                   help='erase data on cluster by zeros')
         self.parser = parser_program
         self.subparsers = subparsers
+
