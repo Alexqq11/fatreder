@@ -19,6 +19,7 @@ class CommandExecutor:
     def execute(self, command, args):
         if command in self.commands:
             self.args = args
+            self.NoneArgumentPath()
             operator.methodcaller(command)(self)
         else:
             raise InvalidCommandException()
@@ -64,6 +65,10 @@ class CommandExecutor:
         self.utils.rmdir(*self.args.path, self.args.clear)
     def exit(self):
         self.core.keep_alive = False
+
+    def NoneArgumentPath(self):
+        if self.args.path == None:
+            self.args.path = []
 
 
 class Core:

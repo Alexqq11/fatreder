@@ -1,0 +1,145 @@
+import posixpath
+
+import DirectoriesStructures
+import FileReader
+
+"""
+if path doesn't exist you can get only raw data safety
+"""
+
+
+class PathObject:
+    def __init__(self, exist, directory, raw_path, raw_desc, canonical_path, head_file_descriptor,
+                 tail_file_descriptor):
+        self._exist = exist
+        self._directory = directory and exist
+        self._raw_path = raw_path
+        self._raw_path_descriptor = raw_desc
+        self._canonical_path = canonical_path
+        self._file = not directory and exist
+        head, tail = posixpath.split(posixpath.normpath(canonical_path)) if canonical_path else (None, None)
+        self._tail = tail
+        self._head = head
+        self._root = head == '/' and tail == ''
+        self._head_descriptor = head_file_descriptor
+        self._tail_descriptor = tail_file_descriptor
+        pass
+
+    @property
+    def is_exist(self):
+        return self._exist
+
+    @property
+    def is_directory(self):
+        return self._directory
+
+    @property
+    def is_file(self):
+        return self._file
+
+    @property
+    def parent_descriptor(self):
+        return self._head_descriptor
+
+    @property
+    def path_descriptor(self):
+        return self._tail_descriptor
+
+    @property
+    def file_directory_path(self):
+        return self._head
+
+    @property
+    def file_name(self):
+        return self._tail
+
+    @property
+    def is_root(self):
+        return self._root
+
+    @property
+    def path(self):
+        return self._canonical_path
+
+    @property
+    def raw_path(self):
+        return self._raw_path
+
+    @property
+    def raw_path_start_directory(self):
+        """
+        in case raw_way = canonical will be returned last file descriptor
+        you can make comand back forward
+        """
+        return self._raw_path_descriptor
+
+
+class FileSystemUtilsLowLevel:
+    def __init__(self, core):
+        self.core = core
+        self.directory_reader = FileReader.DirectoryParser(core)
+
+    def calc_cluster_offset(self, cluster_number):
+        return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
+
+    def parse_directory_descriptor(self, data_cluster):
+        return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(data_cluster))
+
+    def get_directory_descriptor(self, path, working_directory):
+        path = posixpath.normpath(path)
+        path_parts = path.split('/')
+        intermediate_directory = None
+        operation_status = True
+        for way_elem in path_parts:
+            if way_elem == '' and not intermediate_directory:
+                intermediate_directory = self.parse_directory_descriptor(2)
+            elif way_elem == '' and intermediate_directory and way_elem == path_parts[len(path_parts) - 1]:
+                break
+            else:
+                if not intermediate_directory:
+                    intermediate_directory = working_directory
+                dir_entry = intermediate_directory.find(way_elem, 'by_name_dir')
+                if dir_entry:
+                    intermediate_directory = self.parse_directory_descriptor(dir_entry.data_cluster)
+                else:
+                    operation_status = False
+                    break
+
+        return intermediate_directory, operation_status
+
+    def get_canonical_path(self, directory_descriptor: DirectoriesStructures.Directory):
+        parent_cluster = directory_descriptor.parent_directory_cluster
+        own_cluster = directory_descriptor.data_cluster
+        temp_dir = directory_descriptor
+        path = '/'
+        while not temp_dir.is_root:
+            temp_dir = self.parse_directory_descriptor(parent_cluster)
+            path = posixpath.join(temp_dir.find(own_cluster, 'by_address').name, path)
+            own_cluster = parent_cluster
+            parent_cluster = temp_dir.parent_directory_cluster
+        return posixpath.normpath(path)
+
+    def path_parser(self, path, working_directory):
+        path = posixpath.normpath(path)
+        directory, directory_exist = self.get_directory_descriptor(path, working_directory)
+        directory_exist = None
+        canonical_path = None
+        path_exist = False
+        tail_file_descriptor = None
+        head_file_descriptor = None
+        if directory_exist:
+            canonical_path = self.get_canonical_path(directory)
+            path_exist = True
+            tail_file_descriptor = directory
+            head, tail = posixpath.split(canonical_path)
+            head_file_descriptor = self.get_directory_descriptor(head, self.parse_directory_descriptor(2))
+        else:
+            head, tail = posixpath.split(path)
+            directory, parent_directory_exist = self.get_directory_descriptor(head, working_directory)
+            if parent_directory_exist:
+                canonical_path = posixpath.normpath(posixpath.join(self.get_canonical_path(directory), tail))
+                tail_file_descriptor = directory.find(tail, "by_name")
+                path_exist = tail_file_descriptor is not None
+                head_file_descriptor = directory
+        return PathObject(path_exist, directory_exist, path, working_directory,
+                          canonical_path, head_file_descriptor, tail_file_descriptor)
