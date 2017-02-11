@@ -4,10 +4,28 @@ import posixpath
 import os
 import os.path
 import DirectoriesStructures
-
+import re
+import FileEntryCollector as FeC
 class CopyUtils:
-    def __init__(self):
-        pass
+    def __init__(self, core , fat_reader_utils):
+        self.core = core
+        self.low_level_utils = fat_reader_utils.low_level_utils
+        self.fat_reader_utils = fat_reader_utils
+    @property
+    def working_directory(self):
+        return self.fat_reader_utils.working_directory
+
+    @working_directory.setter
+    def working_directory(self, value):
+        self.fat_reader_utils.working_directory = value
+
+    def copy_on_image(self, from_path, to_path):
+        destination_dir, error = self._change_directory(to_path)
+        if error:
+            raise FatReaderExceptions.InvalidPathException()
+        file_dir, file_source, file_name = self._pre_operation_processing(from_path)
+        self.file_writer.copy_file(destination_dir, file_source)
+        self.refresh()
 
     def copy_directory(self, from_path, to_path):
         file_dir, file_source, file_name = self._pre_operation_processing(from_path)
@@ -100,6 +118,35 @@ class CopyUtils:
             os_files.create_dir(dir_path)
             from_dir = self.parse_directory(dir.data_cluster)
             self._write_copy_data_to_os(from_dir, dir_path)
+
+    def _file_exist_name_file_source_path(self, destination_dir: DirectoriesStructures.Directory,
+                                          file_source: FeC.FileEntry):
+        pattern = re.compile("[^.]\((?P<folder>\d+)\)$|\((?P<file>\d+)\)\.[^\.]*$")
+        pattern_end = re.compile("(\.)[^\.]*$")
+        temp_file_source = destination_dir.find(file_source.name, "by_name")
+        while temp_file_source:
+            m = pattern.search(file_source.name)
+            number = ""
+            new_name = ""
+            n = m
+            if m:
+                result = m.groupdict()
+                accessor = "file"
+                if result["folder"]:
+                    accessor = "folder"
+                number = str(int(result[accessor]) + 1)
+            else:
+                number = '(1)'
+                n = pattern_end.search(file_source.name)
+            if not n:
+                new_name = file_source.name + number
+            else:
+                m = n
+                new_name = file_source.name[0:m.start(2)] + number + file_source.name[m.end(2):]
+
+            temp_file_source = destination_dir.find(new_name, "by_name")
+            file_source._long_name = new_name
+        return file_source
 
 class CopyNewDirIMetaData:
     def __init__(self, destination_dir, file_source):

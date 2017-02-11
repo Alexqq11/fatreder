@@ -118,12 +118,14 @@ class FileEntry(Structures.FileEntryStructure):
     def entries_offsets(self):
         return self._entries_offsets
 
-    def to_string(self):
+    def to_string(self, long = False, all=False):
         file_representation = ''
-        file_representation += self.date.isoformat() + ' '
-        file_representation += self.time.isoformat() + '    '
-        file_representation += self.attributes.get_attributes_string() + '     '
-        file_representation += self.name
+        if long and ("h" not in self.attr_string or all):
+            file_representation += self.date.isoformat() + ' '
+            file_representation += self.time.isoformat() + '    '
+            file_representation += self.attributes.get_attributes_string() + '     '
+        if "h" not in self.attr_string or all:
+            file_representation += self.name
         return file_representation
 
     def is_correct_name(self, name):

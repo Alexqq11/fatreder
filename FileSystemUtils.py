@@ -1,172 +1,224 @@
 import posixpath
-import re
-import os
-import os.path
+
+import CopyUtils
 import DirectoriesStructures
-import FatReaderExceptions
-import FileEntryCollector as FeC
-import FileReader as FR
-import FileWriter as FW
-import IOmodule
+import FileReader
 import FileSystemUtilsLowLevel
+import FileWriter
+from FatReaderExceptions import *
 
 
-
-
-class FileSystemUtil:
-    def __init__(self, core):
+class RemoveUtils:
+    def __init__(self, core, fat_reader_utils):
         self.core = core
-        self.file_reader = FR.DataParser(core)
-        self.directory_reader = FR.DirectoryParser(core)
-        self.file_writer = FW.FileWriter(core)
-        self.root_directory_offset = core.fat_bot_sector.root_directory_offset
-        self.working_directory = self.directory_reader.nio_parse_directory(self.root_directory_offset)
-        self.current_path = '/'
+        self.low_level_utils = fat_reader_utils.low_level_utils
+        self.fat_reader_utils = fat_reader_utils
+        self.file_writer = FileWriter.FileWriter(core)
 
-    def ls_recursive(self, path, long=False, all=False):
+    @property
+    def working_directory(self):
+        return self.fat_reader_utils.working_directory
 
+    @working_directory.setter
+    def working_directory(self, value):
+        self.fat_reader_utils.working_directory = value
+
+    def move(self, from_path_obj: FileSystemUtilsLowLevel.PathObject, to_path_obj: FileSystemUtilsLowLevel.PathObject):
+        self.file_writer.transfer_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
+        self.refresh()
+
+    def remove_file(self, path_obj: FileSystemUtilsLowLevel.PathObject, recoverable=True, clean=False):
+        self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable, clean)
+        self.refresh()
+
+    def remove_directory(self, path_obj: FileSystemUtilsLowLevel.PathObject, force=False, clear=True):
+        self._remove_current_directory(path_obj.path_descriptor)
+        self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable=False, clean=clear)
+
+    def _remove_current_directory(self, directory_descriptor: DirectoriesStructures.Directory, force=False, clear=True):
+        for file_descriptor in directory_descriptor.entries():
+            if file_descriptor.attributes.directory:
+                next_directory_descriptor = self.low_level_utils.parse_directory_descriptor(
+                    file_descriptor.data_cluster)
+                self._remove_current_directory(next_directory_descriptor, force, clear)
+                self.file_writer.delete_directory_or_file(file_descriptor, recoverable=False, clean=clear)
+            else:
+                self.file_writer.delete_directory_or_file(file_descriptor, recoverable=False, clean=clear)
+
+    def rename(self, path_obj: FileSystemUtilsLowLevel.PathObject, new_name):
+        self.file_writer.rename(new_name, path_obj.parent_descriptor, path_obj.file_fs_descriptor)
+        self.refresh()
+
+    def refresh(self):
         pass
 
-    def ls(self, path, long=False, all=False, recursive=False):
-        if recursive:
-            self.ls_recursive(path, long)
 
-    def cp(self, path_from, path_to):
-        pass
+class FileSystemUtils:
+    def __init__(self, core, fat_reader_utils):
+        self.core = core
+        self.low_level_utils = fat_reader_utils.low_level_utils
+        self.fat_reader_utils = fat_reader_utils
+        self.file_writer = FileWriter.FileWriter(core)
+        self.file_reader = FileReader.DataParser(core)
 
-    def rmdir(self, path, clear=False):
-        pass
-    def path_validation(self, exist):
-        pass
-    def get_working_directory_information(self, path=""):
-        destination_dir = self.working_directory
-        if path:
-            destination_dir, operation_status = self._change_directory(path)
-            if not operation_status:
-                raise FatReaderExceptions.InvalidPathException()
-        info = ""
-        for files in destination_dir.entries_list:
-            info += files.to_string() + "\n"
-        return info
-    def cat(self, path, byte = False, text= True , encoding="cp866"):
-        pass
-    def cat_data(self, file_name):
-        file_dir, file_source, file_name = self._pre_operation_processing(file_name)
-        if not file_source.attributes.directory:
-            addr = file_source.data_cluster
+    @property
+    def working_directory(self):
+        return self.fat_reader_utils.working_directory
+
+    @working_directory.setter
+    def working_directory(self, value):
+        self.fat_reader_utils.working_directory = value
+
+    def change_directory(self, path_obj: FileSystemUtilsLowLevel.PathObject):
+        self.working_directory = path_obj.path_descriptor
+
+    def new_directories(self, path_obj: FileSystemUtilsLowLevel.PathObject):
+        next_path = path_obj.raw_path
+        last_existing_dir = path_obj.parent_descriptor
+        status = False
+        while not status:
+            output = self.low_level_utils.get_directory_descriptor(self, next_path, last_existing_dir)
+            last_existing_dir, status, stop_number = output
+            path_parts = path_obj.raw_path.split('/')
+            start_cluster = self.file_writer.new_file(path_parts[stop_number], "", last_existing_dir)
+            next_path = posixpath.join('', path_parts[stop_number:])
+
+    def calculate_directory_path(self):
+        return self.low_level_utils.get_canonical_path(self.working_directory)
+
+    def ls(self, path_obj: FileSystemUtilsLowLevel.PathObject, long=False, all=False, recursive=False):
+        if recursive and path_obj.is_directory:
+            yield self.get_directory_information(path_obj, long, all)
+            for dir_ in path_obj.path_descriptor.get_directories_sources():
+                if dir_.name not in [".", ".."]:
+                    yield from self.ls(self.low_level_utils.path_parser(dir_.name, path_obj.path_descriptor), long, all,
+                                       recursive)
+        else:
+            yield self.get_directory_information(path_obj, long, all)
+
+    def get_directory_information(self, path_obj: FileSystemUtilsLowLevel.PathObject, long=False, all=False):
+        info = ''
+        if path_obj.is_file:
+            info = path_obj.path_descriptor.to_string(long, all=True)
+        else:
+            info = "\n".join(
+                x for x in [files.to_string(long, all) for files in path_obj.path_descriptor.entries_list] if x != '')
+        return self.low_level_utils.get_canonical_path(
+            path_obj.path_descriptor if path_obj.is_directory else path_obj.parent_descriptor) + '\n' + info
+
+    def cat_data(self, path_obj: FileSystemUtilsLowLevel.PathObject, byte=False, text=True, encoding="cp866"):
+        addr = path_obj.path_descriptor.data_cluster
+        if byte:
             for data_part in self.file_reader.parse_non_buffer(addr):
                 yield data_part
         else:
-            raise FatReaderExceptions.NotAFileException()
-    def calculate_directory_path(self):
-        return self._calculate_canonical_path(self.working_directory)
+            for data_part in self.file_reader.parse_non_buffer(addr):
+                try:
+                    yield data_part.decode(encoding)
+                except UnicodeEncodeError:
+                    raise BadEncodingSelected()
 
-    def transfer(self, from_path, to_path):
-        destination_dir, error = self._change_directory(to_path)
-        if error:
-            raise FatReaderExceptions.InvalidPathException()
-        file_dir, file_source, file_name = self._pre_operation_processing(from_path)
-        self.file_writer.transfer_file(destination_dir, file_source)
-        self.refresh()
 
-    def new_directory(self, path, attr="d", program_data=None):
-        destination_dir = None
-        file_source = None
-        file_name = None
-        if not program_data:
-            destination_dir, file_source, file_name = self._pre_operation_processing(path)
-            if not file_source:
-                FatReaderExceptions.FileAlreadyExistException()
-        else:
-            destination_dir = program_data.destination_dir
-            file_name = program_data.file_source.name
-            attr = program_data.file_source.attr_string
-        start_cluster = self.file_writer.new_file(file_name, attr, destination_dir)
-        if not program_data:
-            self.refresh()
-        return start_cluster
+class FatReaderUtils:
+    def __init__(self, core):
+        self.core = core
+        self.low_level_utils = FileSystemUtilsLowLevel.FileSystemUtilsLowLevel(core)
+        self._working_directory = self.low_level_utils.parse_directory_descriptor(2)
+        self.file_system_utils = FileSystemUtils(core, self)
+        self.remove_utils = RemoveUtils(core, self)
+        self.copy_utils = CopyUtils.CopyUtils(core, self)
 
-    def copy_on_image(self, from_path, to_path):
-        destination_dir, error = self._change_directory(to_path)
-        if error:
-            raise FatReaderExceptions.InvalidPathException()
-        file_dir, file_source, file_name = self._pre_operation_processing(from_path)
-        self.file_writer.copy_file(destination_dir, file_source)
-        self.refresh()
+    @property
+    def working_directory(self):
+        return self._working_directory
 
-    def remove_file(self, file_name, recoverable=True, clean=False):
-        file_dir, file_source, file_name = self._pre_operation_processing(file_name)
-        if not file_source.attributes.directory:
-            self.file_writer.delete_directory_or_file(file_source, recoverable, clean)
-        else:
-            raise FatReaderExceptions.NotAFileException()
-        self.refresh()
+    @working_directory.setter
+    def working_directory(self, value):
+        self._working_directory = value
 
-    def get_file_information(self, file_name):
-        file_dir, file_source, file_name = self._pre_operation_processing(file_name)
-        return file_source.to_string()
+    def ls(self, path, long=False, all=False, recursive=False):
+        if path == '':
+            path = "./"
+        path_obj = self.low_level_utils.path_parser(path, self.working_directory)
+        if not path_obj.is_exist and not (not path_obj.is_file and path_obj.parent_exist):
+            raise InvalidPathException()
+        for data in self.file_system_utils.ls(path_obj, long, all, recursive):
+            print(data)
+        pass
+
+    def cp(self, path_from, path_to):
+        path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
+        path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
+        if not path_obj_from.is_exist or path_obj_to.is_file:
+            raise InvalidPathException()
+        # call func
+        pass
+
+    def cpf(self, path_from_os, path_to):
+        path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
+        if path_obj_to.is_file:
+            raise InvalidPathException()
+        # call func
+        pass
+
+    def cpt(self, path_from, path_to_os):
+        path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
+        if not path_obj_from.is_exist:
+            raise InvalidPathException()
+        # call func
+        pass
+
+    def rm(self, path, clear=False):
+        path_obj = self.low_level_utils.path_parser(path, self.working_directory)
+        if not path_obj.is_exist:
+            raise FileNotFoundError()
+        if path_obj.is_directory:
+            raise IsADirectoryError()
+        self.remove_utils.remove_file(path_obj, recoverable=True, clean=clear)
+        pass
+
+    def rmdir(self, path, force=False, clear=False):
+        path_obj = self.low_level_utils.path_parser(path, self.working_directory)
+        if not path_obj.is_exist:
+            raise FileNotFoundError()
+        if path_obj.is_file:
+            raise FileExistsError()
+        self.remove_utils.remove_directory(path_obj, force=force, clear=clear)
+        pass
+
+    def cat(self, path, byte=False, text=True, encoding="cp866"):
+        path_obj = self.low_level_utils.path_parser(path, self.working_directory)
+        if not path_obj.is_exist:
+            raise NotAFileException()
+        if path_obj.is_directory:
+            raise NotAFileException()
+        for data in self.file_system_utils.cat_data(path_obj, byte, ):
+            print(data)
+        pass
+
+    def cd(self, path):
+        path_obj = self.low_level_utils.path_parser(path, self.working_directory)
+        if not path_obj.is_exist:
+            raise NotAFileException()
+        if path_obj.is_file:
+            raise NotAFileException()
+        self.file_system_utils.change_directory(path_obj)
+
+    def md(self, path):
+        path_obj = self.low_level_utils.path_parser(path, self.working_directory)
+        if path_obj.is_exist:
+            raise FileAlreadyExistException()
+        self.file_system_utils.new_directories(path_obj)
+
+    def pwd(self):
+        print(self.file_system_utils.calculate_directory_path())
+
+    def move(self, path_from, path_to):
+        path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
+        path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
+        if not path_obj_from.is_exist or path_obj_to.is_file:
+            raise InvalidPathException()
+        self.remove_utils.move(path_obj_from, path_obj_to)
 
     def refresh(self):
-        self.working_directory = self.parse_directory(self.working_directory.data_cluster)
-
-    def calc_cluster_offset(self, cluster_number):
-        return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
-
-    def parse_directory(self, cluster_number):
-        return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(cluster_number))
-
-
-
-
-
-
-    def change_directory(self, path):
-        directory, status = self._change_directory(path)
-        if status:
-            self.working_directory = directory
-        else:
-            raise FatReaderExceptions.DirectoryDoesNotExistException()
-
-
-
-
-
-    def rename(self, path, new_name):
-        destination_dir, file_source, file_name = self._pre_operation_processing(path)
-        self.file_writer.rename(new_name, destination_dir, file_source)
-        self.refresh()
-
-
-
-    def _file_exist_name_file_source_path(self, destination_dir: DirectoriesStructures.Directory,
-                                          file_source: FeC.FileEntry):
-        pattern = re.compile("[^.]\((?P<folder>\d+)\)$|\((?P<file>\d+)\)\.[^\.]*$")
-        pattern_end = re.compile("(\.)[^\.]*$")
-        temp_file_source = destination_dir.find(file_source.name, "by_name")
-        while temp_file_source:
-            m = pattern.search(file_source.name)
-            number = ""
-            new_name = ""
-            n = m
-            if m:
-                result = m.groupdict()
-                accessor = "file"
-                if result["folder"]:
-                    accessor = "folder"
-                number = str(int(result[accessor]) + 1)
-            else:
-                number = '(1)'
-                n = pattern_end.search(file_source.name)
-            if not n:
-                new_name = file_source.name + number
-            else:
-                m = n
-                new_name = file_source.name[0:m.start(2)] + number + file_source.name[m.end(2):]
-
-            temp_file_source = destination_dir.find(new_name, "by_name")
-            file_source._long_name = new_name
-        return file_source
-
-
-
-
+        self.working_directory = self.low_level_utils.parse_directory_descriptor(self.working_directory.data_cluster)

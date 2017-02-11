@@ -11,6 +11,18 @@ class FatReaderException(Exception):
     @property
     def error_message(self):
         return self._message
+class BadEncodingSelected(FatReaderException):
+    def __init__(self, msg = None):
+        self._message = None
+        if msg:
+            self._message = msg
+        else:
+            self._message = "BadEncodingSelected"
+        print(self._message)
+    pass
+    @property
+    def error_message(self):
+        return  self._message
 class InvalidCommandException(FatReaderException):
     def __init__(self, msg = None):
         self._message = None

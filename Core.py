@@ -19,7 +19,7 @@ class CommandExecutor:
     def execute(self, command, args):
         if command in self.commands:
             self.args = args
-            self.NoneArgumentPath()
+            #self.NoneArgumentPath()
             operator.methodcaller(command)(self)
         else:
             raise InvalidCommandException()
@@ -30,33 +30,37 @@ class CommandExecutor:
         pass
 
     def ls(self):
-        self.utils.ls(*self.args.path, self.args.long, self.args.all)
+        if not self.args.path:
+            self.args.path = ["./"]
+        elif type(self.args.path) is not list:
+            self.args.path = [self.args.path]
+        self.utils.ls(*self.args.path, long=self.args.long, all=self.args.all,recursive=self.args.recursive)
         pass
 
     def cp(self):
         if self.args.external and self.args.internal:
             raise InvalidCommandException()
         if self.args.external:
-            self.utils.copy_from_os(*self.args.path)
+            self.utils.cpf(*self.args.path)
         elif self.args.internal:
-            self.utils.copy_to_os(*self.args.path)
+            self.utils.cpt(*self.args.path)
         else:
             self.utils.cp(*self.args.path)
 
     def cd(self):
-        self.utils.change_directory(self.args.path)
+        self.utils.cd(self.args.path)
 
     def md(self):
-        self.utils.make_dirs(*self.args.path)
+        self.utils.md(*self.args.path)
 
     def pwd(self):
-        self.utils.calculate_directory_path()
+        self.utils.pwd()
 
     def cat(self):
         self.utils.cat(*self.args.path, self.args.byte, self.args.text, self.args.encoding)
 
     def rm(self):
-        self.utils.remove_file(*self.args.path, clean=self.args.clear)
+        self.utils.rf(*self.args.path, clean=self.args.clear)
 
     def move(self):
         self.utils.move(*self.args.path)
@@ -89,15 +93,24 @@ class Core:
     def run(self):
         if len(sys.argv)> 1:
             print(sys.argv)
-            self.argument_handler()
+            try:
+                self.argument_handler()
+            except FatReaderException:
+                pass
+            except FileNotFoundError:
+                print("Image not found")
         else:
             self.keep_alive = True
         while self.keep_alive:
             try:
                 command_prompt = input("]>")
-                self.argument_handler(command_prompt)
+                if command_prompt:
+                    self.argument_handler(command_prompt)
             except FatReaderException:
                 pass
+            except FileNotFoundError:
+                print("Image not found")
+
         self.close_reader()
 
     def argument_handler(self, args=None):
@@ -131,7 +144,7 @@ class Core:
         self.fat_tripper = Ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
 
     def init_FSW(self):
-        self.file_system_utils = Fsw.FileSystemUtil(self)
+        self.file_system_utils = Fsw.FatReaderUtils(self)
 
     def init(self, path):
         self._init_image(path)

@@ -83,6 +83,10 @@ class Directory:
     def get_files_sources(self):
         return filter(lambda x: not x.attributes.directory, self.entries_list)
 
+    def entries(self):
+        for x in self.entries_list:
+            yield x
+
     def find(self, value, key):  # todo it with func dict
         if key in self.searching_dict:
             for entry in self.entries_list:
