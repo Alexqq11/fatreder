@@ -60,7 +60,7 @@ class CommandExecutor:
         self.utils.cat(*self.args.path, self.args.byte, self.args.text, self.args.encoding)
 
     def rm(self):
-        self.utils.rf(*self.args.path, clean=self.args.clear)
+        self.utils.rm(*self.args.path, clear=self.args.clear)
 
     def move(self):
         self.utils.move(*self.args.path)
@@ -76,7 +76,7 @@ class CommandExecutor:
 
 
 class Core:
-    def __init__(self):
+    def __init__(self, debug=True):
         self.image_reader = None
         self.fat_bot_sector = None
         self.fat_tripper = None
@@ -88,7 +88,8 @@ class Core:
         self.keep_alive = False
         self.scan_disk = True
         self.image_loaded = False
-        self.run()
+        if not debug:
+            self.run()
 
     def run(self):
         if len(sys.argv)> 1:
@@ -156,9 +157,6 @@ class Core:
         self.image_reader.close_reader()
 
     pass
-class NotAValue:
-    def __init__(self):
-        pass
 
 if __name__ == "__main__":
-    c = Core()
+    c = Core(debug=False)

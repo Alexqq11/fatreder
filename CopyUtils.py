@@ -36,18 +36,15 @@ class CopyUtils:
         start_cluster = self.file_writer.new_file(file_name, attr, destination_dir)
         return start_cluster
 
-    def copy_on_image(self, from_path_obj: FileSystemUtilsLowLevel.PathObject,
+    def copy_in_image(self, from_path_obj: FileSystemUtilsLowLevel.PathObject,
                       to_path_obj: FileSystemUtilsLowLevel.PathObject):
         # todo resolve name conflicts
-        self.file_writer.copy_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
-        self.refresh()
-
-    def copy_directory(self, from_path_obj: FileSystemUtilsLowLevel.PathObject,
-                       to_path_obj: FileSystemUtilsLowLevel.PathObject):
-        # todo resolve name conflicts
-        self.make_dirs_obj(to_path_obj)  # todo be shure if we have dirs it doesn't make it again
-        to_path_obj = self.low_level_utils.path_parser(to_path_obj.raw_path, to_path_obj.raw_path_start_directory)
-        self._write_copy_data(*self._calc_new_dirs(from_path_obj.file_fs_descriptor, to_path_obj.path_descriptor))
+        if from_path_obj.is_file:
+            self.file_writer.copy_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
+        else:
+            self.make_dirs_obj(to_path_obj)  # todo be shure if we have dirs it doesn't make it again
+            to_path_obj = self.low_level_utils.path_parser(to_path_obj.raw_path, to_path_obj.raw_path_start_directory)
+            self._write_copy_data(*self._calc_new_dirs(from_path_obj.file_fs_descriptor, to_path_obj.path_descriptor))
         self.refresh()
 
     def _calc_new_dirs(self, file_descriptor, directory_descriptor: DirectoriesStructures.Directory):

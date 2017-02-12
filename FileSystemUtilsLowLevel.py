@@ -103,6 +103,8 @@ class FileSystemUtilsLowLevel:
 
     def get_directory_descriptor(self, path, working_directory):
         path = posixpath.normpath(path)
+        if path == '/':
+            return self.parse_directory_descriptor(2) , True , 0
         path_parts = path.split('/')
         intermediate_directory = None
         operation_status = True
@@ -155,7 +157,7 @@ class FileSystemUtilsLowLevel:
             path_exist = True
             tail_file_descriptor = directory
             head, tail = posixpath.split(canonical_path)
-            head_file_descriptor = self.get_directory_descriptor(head, self.parse_directory_descriptor(2))
+            head_file_descriptor, _, _ = self.get_directory_descriptor(head, self.parse_directory_descriptor(2))
         else:
             head, tail = posixpath.split(path)
             directory, parent_directory_exist, _ = self.get_directory_descriptor(head, working_directory)

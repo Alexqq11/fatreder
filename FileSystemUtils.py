@@ -74,17 +74,19 @@ class FileSystemUtils:
 
     def new_directories(self, path_obj: FileSystemUtilsLowLevel.PathObject):
         next_path = path_obj.raw_path
-        last_existing_dir = path_obj.parent_descriptor
+        last_existing_dir = path_obj.raw_path_start_directory
         status = False
         start_clusters = []
         while not status:
-            output = self.low_level_utils.get_directory_descriptor(self, next_path, last_existing_dir)
+            output = self.low_level_utils.get_directory_descriptor(next_path, last_existing_dir)
             last_existing_dir, status, stop_number = output
-            path_parts = path_obj.raw_path.split('/')
-            start_cluster = self.file_writer.new_file(path_parts[stop_number], "", last_existing_dir)
+            path_parts = next_path.split('/')
+            start_cluster = self.file_writer.new_file(path_parts[stop_number], "d", last_existing_dir)
             start_clusters.append((start_cluster, path_parts[stop_number]))
-            next_path = posixpath.join('', path_parts[stop_number:])
+            last_existing_dir = self.low_level_utils.parse_directory_descriptor(start_cluster)
+            next_path = posixpath.join('', *path_parts[stop_number+1:])
         return start_clusters
+
     def calculate_directory_path(self):
         return self.low_level_utils.get_canonical_path(self.working_directory)
 
@@ -141,6 +143,7 @@ class FatReaderUtils:
     def ls(self, path, long=False, all=False, recursive=False):
         if path == '':
             path = "./"
+        self.refresh()
         path_obj = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj.is_exist and not (not path_obj.is_file and path_obj.parent_exist):
             raise InvalidPathException()
@@ -153,21 +156,20 @@ class FatReaderUtils:
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
-        # call func
+        self.copy_utils.copy_in_image(path_obj_from, path_obj_to)
         pass
 
     def cpf(self, path_from_os, path_to):
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if path_obj_to.is_file:
             raise InvalidPathException()
-        # call func
-        pass
+        self.copy_utils.copy_from_os(path_from_os, path_obj_to)
 
     def cpt(self, path_from, path_to_os):
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         if not path_obj_from.is_exist:
             raise InvalidPathException()
-        # call func
+        self.copy_utils.copy_to_os(path_obj_from, path_to_os)
         pass
 
     def rm(self, path, clear=False):
