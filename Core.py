@@ -19,7 +19,7 @@ class CommandExecutor:
     def execute(self, command, args):
         if command in self.commands:
             self.args = args
-            #self.NoneArgumentPath()
+            # self.NoneArgumentPath()
             operator.methodcaller(command)(self)
         else:
             raise InvalidCommandException()
@@ -34,7 +34,7 @@ class CommandExecutor:
             self.args.path = ["./"]
         elif type(self.args.path) is not list:
             self.args.path = [self.args.path]
-        self.utils.ls(*self.args.path, long=self.args.long, all=self.args.all,recursive=self.args.recursive)
+        self.utils.ls(*self.args.path, long=self.args.long, all=self.args.all, recursive=self.args.recursive)
         pass
 
     def cp(self):
@@ -67,6 +67,7 @@ class CommandExecutor:
 
     def rmdir(self):
         self.utils.rmdir(*self.args.path, self.args.clear)
+
     def exit(self):
         self.core.keep_alive = False
 
@@ -92,7 +93,7 @@ class Core:
             self.run()
 
     def run(self):
-        if len(sys.argv)> 1:
+        if len(sys.argv) > 1:
             print(sys.argv)
             try:
                 self.argument_handler()
@@ -116,21 +117,20 @@ class Core:
 
     def argument_handler(self, args=None):
         if args == None:
-            args, command= self.args_parser.parse(sys.argv)
+            args, command = self.args_parser.parse(sys.argv)
             self.keep_alive = args.keep_alive
             self.scan_disk = not args.noscan
             if args.load:
                 self.load(args.load)
 
         else:
-            #args, command = None , None
+            # args, command = None , None
             if self.keep_alive:
                 try:
                     args, command = self.args_parser.parse(self.args_parser.get_args_list(args))
                     self.command_executor.execute(command, args)
                 except SystemExit:
                     pass
-
 
     def load(self, path):
         self.init(path)
@@ -153,10 +153,12 @@ class Core:
         self._init_fat_tripper()
         self.init_FSW()
         self.image_loaded = True
+
     def close_reader(self):
         self.image_reader.close_reader()
 
     pass
+
 
 if __name__ == "__main__":
     c = Core(debug=False)

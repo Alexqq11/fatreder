@@ -118,7 +118,7 @@ class FileEntry(Structures.FileEntryStructure):
     def entries_offsets(self):
         return self._entries_offsets
 
-    def to_string(self, long = False, all=False):
+    def to_string(self, long=False, all=False):
         file_representation = ''
         if long and ("h" not in self.attr_string or all):
             file_representation += self.date.isoformat() + ' '
@@ -133,14 +133,14 @@ class FileEntry(Structures.FileEntryStructure):
 
 
 class LongEntryReader(Structures.LongDirectoryEntryStructure):
-    def __init__(self, image_reader : ImageWorker.ImageReader, entry_start_offset , data = None):
+    def __init__(self, image_reader: ImageWorker.ImageReader, entry_start_offset, data=None):
         super().__init__()
         self._data = None
         if not data:
             image_reader.set_global_offset(entry_start_offset)
-            self._data = image_reader.get_data_local(0,32)
+            self._data = image_reader.get_data_local(0, 32)
         else:
-            self._data = data # check data ?
+            self._data = data  # check data ?
         self.image_reader = image_reader
         self.ldir_order = self.get_data(0, 1)  # 0 1
         self.ldir_name1 = self.get_data(1, 10)  # 1 10
@@ -156,8 +156,9 @@ class LongEntryReader(Structures.LongDirectoryEntryStructure):
     def get_data(self, start, size, parse_int=False):
         data = self._data[start: start + size]
         if parse_int:
-            data = self.image_reader.convert_to_int(data,size)
+            data = self.image_reader.convert_to_int(data, size)
         return data
+
     @property
     def entry_start_offset(self):
         return self._entry_start_offset
@@ -171,7 +172,7 @@ class LongEntryReader(Structures.LongDirectoryEntryStructure):
 
 
 class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
-    def __init__(self, image_reader : ImageWorker.ImageReader, entry_start_offset, data=None):
+    def __init__(self, image_reader: ImageWorker.ImageReader, entry_start_offset, data=None):
         super().__init__()
         self._data = None
         if not data:
@@ -200,9 +201,8 @@ class ShortEntryReader(Structures.ShortDirectoryEntryStructure):
     def get_data(self, start, size, parse_int=False):
         data = self._data[start: start + size]
         if parse_int:
-            data = self.image_reader.convert_to_int(data,size)
+            data = self.image_reader.convert_to_int(data, size)
         return data
-
 
     @property
     def attributes(self):

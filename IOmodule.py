@@ -1,13 +1,19 @@
 import FileEntryCollector
 import FileReader
-import  os
+import os
 import os.path
 from functools import partial
 import stat
+
+
 class OSAttributes:
     pass
+
+
 class WinAttributes:
     pass
+
+
 class OSDirectoryReader:
     def __init__(self, cluster_size):
         self.cluster_size = cluster_size
@@ -22,7 +28,7 @@ class OSDirectoryReader:
         files = self.all_files_stream(path)
         for file_path in files:
             if os.path.isfile(file_path):
-                yield  file_path
+                yield file_path
 
     def dirs_stream(self, path):
         files = self.all_files_stream(path)
@@ -37,7 +43,7 @@ class OSDirectoryReader:
             yield f
             f.close()
 
-    def read_file(self,file_path):
+    def read_file(self, file_path):
         f = open(file_path, "rb")
         return f
 
@@ -46,6 +52,7 @@ class OSDirectoryReader:
         data_stream = iter(partial(f.read, self.cluster_size), b'')
         for data_chunk in data_stream:
             yield data_chunk
+
 
 class OSDirectoryWriter:
     def __init__(self, cluster_size):
@@ -59,7 +66,7 @@ class OSDirectoryWriter:
         os.chdir(head)
         f = open(tail, "xb")
         f.close()
-        f = open(tail,"r+b")
+        f = open(tail, "r+b")
         return f
 
     def write_data_to_file(self, file_descriptor, data_stream):
@@ -70,5 +77,5 @@ class OSDirectoryWriter:
 
     def create_dirs(self, path, names_stream):
         for name in names_stream:
-            dir_path  = os.path.join(path, name)
+            dir_path = os.path.join(path, name)
             self.create_dir(dir_path)

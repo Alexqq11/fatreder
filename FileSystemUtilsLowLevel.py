@@ -3,6 +3,7 @@ import posixpath
 import DirectoriesStructures
 import FileReader
 import FileWriter
+
 """
 if path doesn't exist you can get only raw data safety
 """
@@ -14,7 +15,7 @@ class PathObject:
         self._exist = exist
         self._directory = directory and exist
         self._raw_path = raw_path
-        raw_parent , _ = posixpath.split(self._raw_path)
+        raw_parent, _ = posixpath.split(self._raw_path)
         self.raw_parent = raw_parent
         self._raw_path_descriptor = raw_desc
         self._canonical_path = canonical_path
@@ -27,12 +28,14 @@ class PathObject:
         self._head_descriptor = head_file_descriptor
         self._tail_descriptor = tail_file_descriptor
         pass
+
     @property
     def file_fs_descriptor(self):
-        if  self.is_file:
+        if self.is_file:
             return self._tail_descriptor
         elif self.is_directory:
             return self._head_descriptor.find(self._tail, "by_name")
+
     @property
     def is_exist(self):
         return self._exist
@@ -72,6 +75,7 @@ class PathObject:
     @property
     def raw_path(self):
         return self._raw_path
+
     @property
     def parent_exist(self):
         return self._parent_exist
@@ -90,13 +94,14 @@ class FileSystemUtilsLowLevel:
         self.core = core
         self.directory_reader = FileReader.DirectoryParser(core)
         self.file_writer = FileWriter.FileWriter(core)
+
     def calc_cluster_offset(self, cluster_number):
         return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
 
     def parse_directory_descriptor(self, data_cluster):
         return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(data_cluster))
 
-    def new_directory(self, path_obj: PathObject, directory_descriptor :DirectoriesStructures.Directory, attr = ''):
+    def new_directory(self, path_obj: PathObject, directory_descriptor: DirectoriesStructures.Directory, attr=''):
         attr += 'd'
         start_cluster = self.file_writer.new_file(path_obj.file_name, attr, directory_descriptor)
         return start_cluster
@@ -104,16 +109,17 @@ class FileSystemUtilsLowLevel:
     def get_directory_descriptor(self, path, working_directory):
         path = posixpath.normpath(path)
         if path == '/':
-            return self.parse_directory_descriptor(2) , True , 0
+            return self.parse_directory_descriptor(2), True, 0
         path_parts = path.split('/')
         intermediate_directory = None
         operation_status = True
         track_num = 0
-        for num , way_elem in enumerate(path_parts):
+        for num, way_elem in enumerate(path_parts):
             track_num = num
             if way_elem == '' and intermediate_directory is None:
                 intermediate_directory = self.parse_directory_descriptor(2)
-            elif not (way_elem == '.' or (way_elem == '..' and (intermediate_directory.is_root if intermediate_directory else working_directory.is_root))):
+            elif not (way_elem == '.' or (way_elem == '..' and (
+                    intermediate_directory.is_root if intermediate_directory else working_directory.is_root))):
                 if intermediate_directory is None:
                     intermediate_directory = working_directory
                 dir_entry = intermediate_directory.find(way_elem, 'by_name_dir')
@@ -124,7 +130,7 @@ class FileSystemUtilsLowLevel:
                     break
             elif intermediate_directory is None:
                 intermediate_directory = working_directory
-        return intermediate_directory, operation_status , track_num
+        return intermediate_directory, operation_status, track_num
 
     def get_canonical_path(self, directory_descriptor: DirectoriesStructures.Directory):
         parent_cluster = directory_descriptor.parent_directory_cluster
@@ -135,19 +141,19 @@ class FileSystemUtilsLowLevel:
         while not temp_dir.is_root:
             temp_dir = self.parse_directory_descriptor(parent_cluster)
             fs = temp_dir.find(own_cluster, 'by_address')
-            #print(fs , fs.name, own_cluster , path ,  sep="     ")
-            #path = posixpath.join(fs.name, path)
+            # print(fs , fs.name, own_cluster , path ,  sep="     ")
+            # path = posixpath.join(fs.name, path)
             name_stack.append(fs.name)
             own_cluster = parent_cluster
             parent_cluster = temp_dir.parent_directory_cluster
-        #print(name_stack)
+        # print(name_stack)
         path = posixpath.join("/", *reversed(name_stack))
         return posixpath.normpath(path)
 
     def path_parser(self, path, working_directory):
         path = posixpath.normpath(path)
         directory, directory_exist, _ = self.get_directory_descriptor(path, working_directory)
-        #directory_exist = None
+        # directory_exist = None
         canonical_path = None
         path_exist = False
         tail_file_descriptor = None

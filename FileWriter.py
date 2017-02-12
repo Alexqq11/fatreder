@@ -17,13 +17,14 @@ class FileWriter:
     def count_clusters(self, size_in_bytes):  # TODO correct
         return (size_in_bytes + self.cluster_size - 1) // self.cluster_size
 
-    def extend_file(self, directory_start_cluster, size_in_bytes):  # TODO correct #make it smart ? and check end of data cluster
+    def extend_file(self, directory_start_cluster,
+                    size_in_bytes):  # TODO correct #make it smart ? and check end of data cluster
         clusters_amount = self.count_clusters(size_in_bytes)
         if clusters_amount == 0:
             FatReaderExceptions.ZeroSizeAllocationException()
         clusters = self.core.fat_tripper.get_file_clusters_list(directory_start_cluster)
         extended_cluster = clusters[len(clusters) - 1]
-        status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount) # todo if zero do nothing
+        status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)  # todo if zero do nothing
         if status:
             clusters = self.core.fat_tripper.get_file_clusters_list(extended_cluster)
             self.delete_data_clusters(clusters[1])
@@ -44,15 +45,15 @@ class FileWriter:
     def get_file_allocation_offsets(self, cluster_number):
         return self.core.fat_tripper.get_file_clusters_offsets_list(cluster_number)
 
-    def get_file_allocated_clusters(self,cluster_number):
-        return  self.core.fat_tripper.get_file_clusters_list(cluster_number)
+    def get_file_allocated_clusters(self, cluster_number):
+        return self.core.fat_tripper.get_file_clusters_list(cluster_number)
 
     def extend_file_allocation(self, first_cluster, size_in_clusters):
-        status = self.core.fat_tripper.extend_file(first_cluster,size_in_clusters)
+        status = self.core.fat_tripper.extend_file(first_cluster, size_in_clusters)
         if not status:
             raise FatReaderExceptions.AllocationMemoryOutException
 
-    def remove_excessive_allocation(self,new_end_cluster):
+    def remove_excessive_allocation(self, new_end_cluster):
         self.core.fat_tripper.delete_file_fat_chain(new_end_cluster, True)
 
     def find_place_for_entry_on_current_cluster(self, cluster_offset, entries_number):  # something wrong here
@@ -132,7 +133,7 @@ class FileWriter:
             correct_successfully = self.not_found_processing(destination_directory.data_cluster)
             entry_place, found_successfully = self.find_place_for_entry(destination_directory.data_cluster,
                                                                         len(entry_entries))
-            if not (correct_successfully and found_successfully): # ????? todo
+            if not (correct_successfully and found_successfully):  # ????? todo
                 raise FatReaderExceptions.AllocationMemoryOutException()
         self.copy_entry_writes(entry_place, entry_entries)
         self.delete_file_entry(file_source.entries_offsets, True)
@@ -188,16 +189,15 @@ class FileWriter:
             self.image_reader.set_data_global(destination_allocation[pointer], data)
             pointer += 1
 
-    def  _correct_alloc(self , destination_cluster , source_firs_cluster):
+    def _correct_alloc(self, destination_cluster, source_firs_cluster):
         dest_list = self.get_file_allocated_clusters(destination_cluster)
         sour_list = self.get_file_allocated_clusters(source_firs_cluster)
         if len(dest_list) > len(sour_list):
-            self.remove_excessive_allocation(dest_list[len(sour_list) - 1]) # check mistake with 1
+            self.remove_excessive_allocation(dest_list[len(sour_list) - 1])  # check mistake with 1
         elif len(dest_list) < len(sour_list):
-            self.extend_file_allocation(dest_list[len(dest_list) -1], len(sour_list) - len(dest_list) )
+            self.extend_file_allocation(dest_list[len(dest_list) - 1], len(sour_list) - len(dest_list))
         dest_list = self.get_file_allocated_clusters(destination_cluster)
         pass
-
 
     def delete_directory_or_file(self, file_entry: FeC.FileEntry, recoverable=True, clean=False):
         if clean:

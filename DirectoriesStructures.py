@@ -38,6 +38,7 @@ class Directory:
     @property
     def parent_directory_offset(self):
         return self._parent_data_offset
+
     def _init_search_dict(self):
         self.searching_dict = {"by_address": lambda value, iterable: value == iterable.data_cluster,
                                'by_name_dir': lambda value, iterable: iterable.is_correct_name(value) and
@@ -56,7 +57,7 @@ class Directory:
             self._parent_data_cluster = parent_entry.data_cluster
             self._parent_data_offset = parent_entry.data_offset
             self._root_status = False
-        elif len(file_entries_list):
+        elif len(file_entries_list): # can be crashed when directory have trash  it needs to check cluster!!!!
             if file_entries_list[0].attributes.volume_id:
                 self._self_data_cluster = 2
                 self._self_data_offset = file_entries_list[0].entries_offsets[0]
@@ -77,6 +78,7 @@ class Directory:
             return True, value
         else:  # todo reformate this
             return False, 2
+
     def get_directories_sources(self):
         return filter(lambda x: x.attributes.directory, self.entries_list)
 

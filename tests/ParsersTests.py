@@ -17,7 +17,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 
 class FatTablesReadersTests(unittest.TestCase):
-
     def test_file_entry_creator(self):
         creator = FileEntryCreator.FileEntryCreator()
         dir_listing = (b"NAME.NAM", b"NAME~1.NAM", b"NAME~2.NAM", b"NAME~3.NAM", b"NAME~4.NAM")
@@ -342,6 +341,7 @@ class FatTablesReadersTests(unittest.TestCase):
         with self.subTest("Check_cant_allocate"):
             cache = core.fat_tripper.find_empty_entries(31225)
             self.assertFalse(cache[1])  # TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE
+
     def test_delete_primitive(self):
         core = Core.Core()
         core.init("./test2.img")
@@ -394,6 +394,7 @@ class FatTablesReadersTests(unittest.TestCase):
                 core.image_reader.set_data_global(core.fat_bot_sector.calc_cluster_offset(cluster),
                                                   data_dump[iterr])
                 iterr += 1
+
     def test_file_writer_tests(self):
         core = Core.Core()
         core.init("./test2.img")
@@ -449,11 +450,13 @@ class FatTablesReadersTests(unittest.TestCase):
                 core.image_reader.set_data_global(core.fat_bot_sector.calc_cluster_offset(cluster),
                                                   dump_data_before[iter])
                 iter += 1
+
     def test_file_system_walker(self):
         core = Core.Core()
         core.init("./test3.img")
         with self.subTest("_path_parser test function"):
             pass
+
 
 if __name__ == '__main__':
     unittest.main()

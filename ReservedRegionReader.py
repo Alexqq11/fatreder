@@ -3,7 +3,7 @@ import Structures
 
 
 class BootSectorParser(Structures.FatBootSectorStructure):
-    def __init__(self, reader: ImageWorker.ImageReader, data = None):
+    def __init__(self, reader: ImageWorker.ImageReader, data=None):
         super().__init__()
         self._data = None
         if not data:
@@ -51,8 +51,9 @@ class BootSectorParser(Structures.FatBootSectorStructure):
     def get_data(self, start, size, parse_int=False):
         data = self._data[start: start + size]
         if parse_int:
-            data = self.reader.convert_to_int(data,size)
+            data = self.reader.convert_to_int(data, size)
         return data
+
     def _calc_data_clusters(self):
         data_sectors = self.bpb_total_sectors_32 - (self.root_directory_offset // self.bpb_bytes_per_sector)
         return data_sectors // self.bpb_sectors_per_cluster

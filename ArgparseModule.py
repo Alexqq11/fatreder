@@ -22,13 +22,13 @@ class ArgsParser:
                                     help='do not check the image for errors')
         parser_program.add_argument('-k', "--keep-alive", dest='keep_alive', action='store_true',
                                     help='do not exit from util after get sys.args')
-        parser_program.add_argument('-l', "--load",  dest='load', action='store', help=' load working image from path')
+        parser_program.add_argument('-l', "--load", dest='load', action='store', help=' load working image from path')
         subparsers = parser_program.add_subparsers(help='sub-command help')
 
-        parser_load = subparsers.add_parser("load" ,help="load -h , --help", description="load open image")
+        parser_load = subparsers.add_parser("load", help="load -h , --help", description="load open image")
         parser_load.add_argument(dest='path', metavar='path', nargs=1)
         parser_load.add_argument('-n', "--no-scan", dest='noscan', action='store_true',
-                                    help='do not check the image for errors')
+                                 help='do not check the image for errors')
         # ls
         parser_ls = subparsers.add_parser("ls", help="ls -h, --help",
                                           description='ls is a command to print list files in directory in fat reader util')
@@ -64,7 +64,7 @@ class ArgsParser:
                                            description='pwd is a command to calculate ful path to working directory in image')
         # exit
         parser_exit = subparsers.add_parser("exit", help="exit -h, --help",
-                                           description='exit from fat reader util')
+                                            description='exit from fat reader util')
 
         # move
         parser_move = subparsers.add_parser("move", help="move -h, --help",
@@ -94,4 +94,3 @@ class ArgsParser:
                                   help='erase data on cluster by zeros')
         self.parser = parser_program
         self.subparsers = subparsers
-
