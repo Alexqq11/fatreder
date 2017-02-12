@@ -1,16 +1,22 @@
-import IOmodule
-import FatReaderExceptions
-import posixpath
 import os
 import os.path
+
 import DirectoriesStructures
-import re
-import FileEntryCollector as FeC
+import FatReaderExceptions
+import FileReader
+import FileSystemUtilsLowLevel
+import FileWriter
+import IOmodule
+
+
 class CopyUtils:
-    def __init__(self, core , fat_reader_utils):
+    def __init__(self, core, fat_reader_utils):
         self.core = core
         self.low_level_utils = fat_reader_utils.low_level_utils
         self.fat_reader_utils = fat_reader_utils
+        self.file_writer = FileWriter.FileWriter(core)
+        self.file_reader = FileReader.DataParser(core)
+
     @property
     def working_directory(self):
         return self.fat_reader_utils.working_directory
@@ -19,54 +25,49 @@ class CopyUtils:
     def working_directory(self, value):
         self.fat_reader_utils.working_directory = value
 
-    def copy_on_image(self, from_path, to_path):
-        destination_dir, error = self._change_directory(to_path)
-        if error:
-            raise FatReaderExceptions.InvalidPathException()
-        file_dir, file_source, file_name = self._pre_operation_processing(from_path)
-        self.file_writer.copy_file(destination_dir, file_source)
+    def refresh(self):
+        pass
+
+    def make_dirs_obj(self, path_obj):
+        start_clusters = self.fat_reader_utils.self.file_system_utils.new_directories(path_obj)
+        return start_clusters
+
+    def make_dir(self, file_name, attr, destination_dir):
+        start_cluster = self.file_writer.new_file(file_name, attr, destination_dir)
+        return start_cluster
+
+    def copy_on_image(self, from_path_obj: FileSystemUtilsLowLevel.PathObject,
+                      to_path_obj: FileSystemUtilsLowLevel.PathObject):
+        # todo resolve name conflicts
+        self.file_writer.copy_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
         self.refresh()
 
-    def copy_directory(self, from_path, to_path):
-        file_dir, file_source, file_name = self._pre_operation_processing(from_path)
-        if not file_source.attributes.directory:
-            raise FatReaderExceptions.NotADirectoryException()
-        destination_dir, error = self._change_directory(to_path)
-        if error:
-            raise FatReaderExceptions.InvalidPathException()
-        file_source = self._file_exist_name_file_source_path(destination_dir, file_source)
-        start_cluster = self.new_directory(None, "", CopyNewDirIMetaData(destination_dir, file_source))
-        to_dir = self.parse_directory(start_cluster)
-        from_dir = self.parse_directory(file_source.data_cluster)
-        self._write_copy_data(from_dir, to_dir)
+    def copy_directory(self, from_path_obj: FileSystemUtilsLowLevel.PathObject,
+                       to_path_obj: FileSystemUtilsLowLevel.PathObject):
+        # todo resolve name conflicts
+        self.make_dirs_obj(to_path_obj)  # todo be shure if we have dirs it doesn't make it again
+        to_path_obj = self.low_level_utils.path_parser(to_path_obj.raw_path, to_path_obj.raw_path_start_directory)
+        self._write_copy_data(*self._calc_new_dirs(from_path_obj.file_fs_descriptor, to_path_obj.path_descriptor))
         self.refresh()
+
+    def _calc_new_dirs(self, file_descriptor, directory_descriptor: DirectoriesStructures.Directory):
+        start_cluster = self.make_dir(file_descriptor.name, file_descriptor.attr_string, directory_descriptor)
+        new_to_dir = self.low_level_utils.parse_directory_descriptor(start_cluster)
+        new_from_dir = self.low_level_utils.parse_directory_descriptor(file_descriptor.data_cluster)
+        return new_from_dir, new_to_dir
 
     def _write_copy_data(self, from_dir: DirectoriesStructures.Directory, to_dir: DirectoriesStructures.Directory):
         for files in from_dir.get_files_sources():
             self.file_writer.copy_file(to_dir, files)
-        for dirs in from_dir.get_files_sources():
-            start_cluster = self.new_directory(None, "", CopyNewDirIMetaData(to_dir, dirs))
-            new_to_dir = self.parse_directory(start_cluster)
-            new_from_dir = self.parse_directory(dirs.data_cluster)
-            self._write_copy_data(new_from_dir, new_to_dir)
+        for dir_file_descriptor in from_dir.get_files_sources():
+            self._write_copy_data(*self._calc_new_dirs(dir_file_descriptor, to_dir))
 
-    def _check_os_path(self, os_path):
+    @staticmethod
+    def _check_os_path(os_path):
         os_path = os.path.normpath(os_path)
         if os.path.isfile(os_path) or os.path.ismount(os_path):
             raise FatReaderExceptions.InvalidPathException()
         return os_path
-
-    def make_dirs(self, path):
-        posixpath.normpath(path)
-        directory, head_exist = self._change_directory(path)
-        if head_exist:
-            raise FatReaderExceptions.FileAlreadyExistException()
-
-    def _check_image_path_for_os_copy(self, image_path):
-        head, tail, is_dir = self.__path_parser(image_path)
-        if not is_dir:
-            raise FatReaderExceptions.InvalidPathException()
-        return posixpath.join(head, tail)
 
     def _from_os_write_copy_data(self, os_path, destination_dir):
         os_files = IOmodule.OSDirectoryReader(self.core.fat_bot_sector.cluster_size)
@@ -82,81 +83,35 @@ class CopyUtils:
         for dirs in os_files.dirs_stream(os_path):
             head, tail = os.path.split(dirs)
             data_cluster = self.file_writer.new_file(tail, "d", destination_dir)
-            nex_dir_to_write = self.parse_directory(data_cluster)
+            nex_dir_to_write = self.low_level_utils.parse_directory_descriptor(data_cluster)
             self._from_os_write_copy_data(dirs, nex_dir_to_write)
 
-    def copy_from_os(self, os_path, image_path):
+    def copy_from_os(self, os_path, image_path_obj: FileSystemUtilsLowLevel.PathObject):
         os_path = self._check_os_path(os_path)
-        image_path = self._check_image_path_for_os_copy(image_path)
-        # os_files = IOmodule.OSDirectoryReader(self.core.fat_bot_sector.cluster_size)
-        destination_dir, sst = self._change_directory(image_path)
-        self._from_os_write_copy_data(os_path, destination_dir)
+        self.make_dirs_obj(image_path_obj)  # todo be shure if we have dirs it doesn't make it again
+        image_path_obj = self.low_level_utils.path_parser(image_path_obj.raw_path,
+                                                          image_path_obj.raw_path_start_directory)
+        self._from_os_write_copy_data(os_path, image_path_obj.path_descriptor)
 
-    def copy_to_os(self, image_path, os_path):
-        head, tail, is_dir = self.__path_parser(image_path)
+    def copy_to_os(self, image_path_obj: FileSystemUtilsLowLevel.PathObject, os_path):
         os_files = IOmodule.OSDirectoryWriter(self.core.fat_bot_sector.cluster_size)
         os_files.create_dir(os_path)
-        if not is_dir:
-            src_dir, sst = self._change_directory(head)
-            src_dsc_file = src_dir.find(tail, "by_name")
-            f = os_files.crete_file(os.path.join(os_path, tail))
-            os_files.write_data_to_file(f, self.file_reader.parse_non_buffer(src_dsc_file.data_cluster))
+        if image_path_obj.is_file:
+            f = os_files.crete_file(os.path.join(os_path, image_path_obj.file_name))
+            os_files.write_data_to_file(f, self.file_reader.parse_non_buffer(
+                image_path_obj.file_fs_descriptor.data_cluster))
             f.close()
         else:
-            src_dir, sst = self._change_directory(posixpath.join(head, tail))
-            self._write_copy_data_to_os(src_dir, os_path)
+            self._write_copy_data_to_os(image_path_obj.path_descriptor, os_path)
 
     def _write_copy_data_to_os(self, from_dir: DirectoriesStructures.Directory, os_path):
         os_files = IOmodule.OSDirectoryWriter(self.core.fat_bot_sector.cluster_size)
         for file in from_dir.get_files_sources():
-            # self.file_writer.copy_file(to_dir, files)
             f = os_files.crete_file(os.path.join(os_path, file.name))
             os_files.write_data_to_file(f, self.file_reader.parse_non_buffer(file.data_cluster))
             f.close()
-        for dir in from_dir.get_files_sources():
-            dir_path = os.path.join(os_path, dir.name)
+        for dir_ in from_dir.get_files_sources():
+            dir_path = os.path.join(os_path, dir_.name)
             os_files.create_dir(dir_path)
-            from_dir = self.parse_directory(dir.data_cluster)
+            from_dir = self.low_level_utils.parse_directory_descriptor(dir_.data_cluster)
             self._write_copy_data_to_os(from_dir, dir_path)
-
-    def _file_exist_name_file_source_path(self, destination_dir: DirectoriesStructures.Directory,
-                                          file_source: FeC.FileEntry):
-        pattern = re.compile("[^.]\((?P<folder>\d+)\)$|\((?P<file>\d+)\)\.[^\.]*$")
-        pattern_end = re.compile("(\.)[^\.]*$")
-        temp_file_source = destination_dir.find(file_source.name, "by_name")
-        while temp_file_source:
-            m = pattern.search(file_source.name)
-            number = ""
-            new_name = ""
-            n = m
-            if m:
-                result = m.groupdict()
-                accessor = "file"
-                if result["folder"]:
-                    accessor = "folder"
-                number = str(int(result[accessor]) + 1)
-            else:
-                number = '(1)'
-                n = pattern_end.search(file_source.name)
-            if not n:
-                new_name = file_source.name + number
-            else:
-                m = n
-                new_name = file_source.name[0:m.start(2)] + number + file_source.name[m.end(2):]
-
-            temp_file_source = destination_dir.find(new_name, "by_name")
-            file_source._long_name = new_name
-        return file_source
-
-class CopyNewDirIMetaData:
-    def __init__(self, destination_dir, file_source):
-        self._file_source = file_source
-        self._destination_dir = destination_dir
-
-    @property
-    def destination_dir(self):
-        return self._destination_dir
-
-    @property
-    def file_source(self):
-        return self._file_source
