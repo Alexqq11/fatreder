@@ -24,7 +24,7 @@ class FileWriter:
             FatReaderExceptions.ZeroSizeAllocationException()
         clusters = self.core.fat_tripper.get_file_clusters_list(directory_start_cluster)
         extended_cluster = clusters[len(clusters) - 1]
-        status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)  # todo if zero do nothing
+        cluster, status = self.core.fat_tripper.extend_file(extended_cluster, clusters_amount)  # todo if zero do nothing
         if status:
             clusters = self.core.fat_tripper.get_file_clusters_list(extended_cluster)
             self.delete_data_clusters(clusters[1])

@@ -1,6 +1,6 @@
 import DirectoriesStructures as DirStructure
 import FileEntryCollector as FE_Collector
-
+import copy
 
 class DataParser:
     def __init__(self, core):
@@ -9,6 +9,7 @@ class DataParser:
         self.data_clusters_offsets_list = []
         self.cluster_size = None
         self.buffer = []
+
 
     def _set_default_settings(self):
         self.data_clusters_offsets_list = []
@@ -48,11 +49,15 @@ class DirectoryParser:
         self.current_next_swapped = True
         self.current_next_set = False
         self.current_parse_lfn = False
+        self.free_entries = []
+        self.free_entries_amount = 0
 
     def nio_is_dir(self, offset):
         first_entry_byte = self.image_reader.get_data_global(offset, 1)
         return not ((first_entry_byte in [b'\xe5', b'\x00']) or self.nio_is_lfn(offset))
-
+    def nio_is_free(self,offset):
+        first_entry_byte = self.image_reader.get_data_global(offset, 1)
+        return  first_entry_byte in [b'\xe5', b'\x00']
     def nio_is_lfn(self, offset):
         first_entry_byte = self.image_reader.get_data_global(offset, 1)
         attr_entry_byte = self.image_reader.get_data_global(offset + 11, 1, True)  # need more tests
@@ -65,6 +70,10 @@ class DirectoryParser:
 
     def nio_parse_short_entry(self, entry_global_offset):
         status = self.nio_is_dir(entry_global_offset)
+        free_entry = self.nio_is_free(entry_global_offset)
+        self.free_entries.append((free_entry, entry_global_offset))
+        if free_entry:
+            self.free_entries_amount += 1
         file_entry = None
         if status:
             file_entry = FE_Collector.FileEntryCollector(self.core.fat_bot_sector.calc_cluster_offset)
@@ -101,7 +110,8 @@ class DirectoryParser:
         self.current_next_set = False
         self.current_parse_lfn = False
         self.back_index_set = False
-
+        self.free_entries = []
+        self.free_entries_amount = 0
     def nio_offset_manager(self, parsing_lfn):
         if parsing_lfn:
             if not self.current_next_set:
@@ -147,17 +157,16 @@ class DirectoryParser:
         dir_cluster_number = self.core.fat_bot_sector.calc_cluster_number(directory_offset)
         self.offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(dir_cluster_number)
         self.current_offset = directory_offset
-        cache = None
+        successfully, file_entry, entry_end, previous_entry_number = None, None, None, None
         while self.current_cluster_offset_index < len(self.offsets_list):
             if self.current_parse_lfn:
-                cache = self.nio_parse_long_entry(self.current_offset, cache[1], cache[3])
-
-                if cache[2] or not cache[0]:  # need some tests
+                successfully, file_entry, entry_end, previous_entry_number = self.nio_parse_long_entry(self.current_offset, file_entry, previous_entry_number)
+                if entry_end or not successfully:  # need some tests
                     self.current_parse_lfn = False
             else:
-                cache = self.nio_parse_short_entry(self.current_offset)
-                self.current_parse_lfn = cache[0]
+                successfully, file_entry, entry_end, previous_entry_number = self.nio_parse_short_entry(self.current_offset)
+                self.current_parse_lfn = successfully
             self.nio_offset_manager(self.current_parse_lfn)
         file_entries = self.File_entries
-        self.reset_to_default_settings()
-        return DirStructure.Directory([entry.get_file_entry() for entry in file_entries])
+        #self.reset_to_default_settings()
+        return DirStructure.Directory(self.core,[entry.get_file_entry() for entry in file_entries],copy.copy(self.free_entries) , self.free_entries_amount)

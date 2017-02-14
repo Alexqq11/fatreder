@@ -1,5 +1,7 @@
+import FatReaderExceptions
 class Directory:
-    def __init__(self, file_entries_list):
+    def __init__(self, core, file_entries_list, free_entry_place, free_entries_amount):
+        self.core = core
         self._root_status = None
         self._self_data_cluster = None
         self._self_data_offset = None
@@ -10,6 +12,63 @@ class Directory:
         self._init_files(file_entries_list)
         self._short_names = tuple([entry.short_name for entry in file_entries_list])
         self._long_names = tuple([entry.long_name for entry in file_entries_list])
+
+        self._writes_place = free_entry_place
+        self._free_entries_amount = free_entries_amount
+        self._default_cluster_allocation_size = 1
+        self._cluster_size = core.fat_bot_sector.cluster_size
+        #self._last_empty_point = 0
+
+    def _find_place_for_entry(self, amount):
+        last_index = 0
+        index_pool = []
+        while len(index_pool) != amount:
+            index_pool , last_index = self.try_found_place_for_entry(amount, last_index)
+            if len(index_pool) != amount:
+                self._extend_directory()
+        return index_pool
+
+    def try_found_place_for_entry(self, amount, start_position=0):
+        index_pool = []
+        last_index = 0
+        for index, (status, offset) in enumerate(self._writes_place[start_position:]):
+            last_index = index
+            if status:
+                index_pool.append((index, offset))
+                if len(index_pool) == amount:
+                    break
+            else:
+                if index_pool:
+                    index_pool = []
+        return index_pool , last_index
+
+    def _extend_directory(self):
+        cluster , status = self.core.fat_tripper.extend_file(self.data_cluster, self._default_cluster_allocation_size)
+        if not status:
+            raise FatReaderExceptions.AllocationMemoryOutException
+        self._note_allocated_place(cluster)
+
+    def _note_allocated_place(self, cluster):
+        extended_clusters_offsets = self.core.fat_tripper.get_clusters_offsets_list
+        for offset in extended_clusters_offsets:
+            self._writes_place += [(True, offset + x) for x in range(0, self._cluster_size, 32)]
+        self._free_entries_amount += self._cluster_size // 32 * len(extended_clusters_offsets)
+
+    def make_directory(self):
+        pass
+    def make_file(self):
+        pass
+    def rename_file(self):
+        pass
+    def resolve_name_conflict(self):
+        pass
+    def remove_file(self):
+        pass
+    def remove_directory(self):
+        pass
+
+
+
 
     @property
     def short_names(self):

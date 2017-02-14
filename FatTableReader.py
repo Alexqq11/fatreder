@@ -22,10 +22,15 @@ class FatTableReader:  # unsafety with out file image error checking
         empty_entry, status = self.find_empty_entries(1)  # empty_entry is list
         if status:
             empty_entry = empty_entry[0]
-            status = status and self.extend_file(empty_entry, amount_of_clusters - 1)
+            status = status and self.extend_place(empty_entry, amount_of_clusters - 1)
         return empty_entry, status
 
-    def extend_file(self, last_cluster, amount_of_clusters):
+    def extend_file(self,file_start_cluster, amount_of_clusters): # now it works correctly with any cluster of file
+        last = self.get_file_clusters_list(file_start_cluster)[-1:][0]
+        status = self.extend_place(last, amount_of_clusters)
+        return last , status
+
+    def extend_place(self, last_cluster, amount_of_clusters):
         empty_clusters_list, status = self.find_empty_entries(amount_of_clusters)
 
         return self._extend_file(empty_clusters_list, last_cluster, status)
