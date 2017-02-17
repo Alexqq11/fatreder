@@ -84,7 +84,9 @@ class FileSystemUtils:
             start_cluster = self.file_writer.new_file(path_parts[stop_number], "d", last_existing_dir)
             start_clusters.append((start_cluster, path_parts[stop_number]))
             last_existing_dir = self.low_level_utils.parse_directory_descriptor(start_cluster)
-            next_path = posixpath.join('', *path_parts[stop_number+1:])
+            next_path = posixpath.normpath(posixpath.join('', *path_parts[stop_number+1:]))
+            if next_path is '':
+                status = True
         return start_clusters
 
     def calculate_directory_path(self):

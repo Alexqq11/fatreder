@@ -95,6 +95,9 @@ class FileWriter:
         return self.extend_file(directory_data_cluster, self.cluster_size)
 
     def new_file(self, name, attr, destination_directory: DiSt.Directory):
+        if name == '':
+            raise Exception()
+
         start_cluster, allocated_successfully = self.allocate_place(self.cluster_size)
         if allocated_successfully:
             dir_list = destination_directory.short_names
@@ -107,7 +110,11 @@ class FileWriter:
                                                                             len(entry_entries))
                 if not (correct_successfully and found_successfully):
                     raise FatReaderExceptions.AllocationMemoryOutException()
-            self.copy_entry_writes(entry_place, entry_entries)
+            if len(entry_entries) == 1 and entry_entries[0][0] == b' ':
+                self.copy_entry_writes(entry_place, entry_entries)
+                raise  FileNotFoundError()
+            else:
+                self.copy_entry_writes(entry_place, entry_entries)
             if "d" in attr:
                 self._add_directory_writes(destination_directory, start_cluster)
             return start_cluster
@@ -116,6 +123,7 @@ class FileWriter:
             raise FatReaderExceptions.AllocationMemoryOutException()
 
     def _add_directory_writes(self, parent_directory: DiSt.Directory, dir_data_cluster):
+        print([x for x in self.file_data_reader.parse_non_buffer(dir_data_cluster)])
         parent_entries = self.file_entry_creator.new_entry('..', 'd', parent_directory.data_cluster, self.cluster_size,
                                                            tuple())
         current_entries = self.file_entry_creator.new_entry('.', 'd', dir_data_cluster, self.cluster_size, tuple())
@@ -153,6 +161,7 @@ class FileWriter:
                 raise FatReaderExceptions.AllocationMemoryOutException()
         self.copy_entry_writes(entry_place, entry_entries)
         self.delete_file_entry(file_source.entries_offsets, True)
+        # todo in this error in file_source beacuse .. lincked into old directory
 
     def copy_file(self, destination_directory: DiSt.Directory, file_source: FeC.FileEntry):
         # TODO extend dir if it need

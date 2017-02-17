@@ -4,54 +4,6 @@ import ImageWorker
 import FileEntryMetaData as FEntryMD
 import Structures
 
-
-class FileEntryCollector:
-    def __init__(self, cluster_to_offset):
-        self.ldir_list = []
-        self.dir = None  # DirEntryShortFat32()
-        self._cluster_to_offset = cluster_to_offset
-
-    def append_ldir_entry(self, ldir_entry):
-        self.ldir_list.append(ldir_entry)
-
-    def set_dir(self, dir_entry):
-        self.dir = dir_entry
-
-    def get_file_entry(self):
-        offset = None
-        if self._cluster_to_offset:
-            offset = self._cluster_to_offset(self.dir.data_cluster_number)
-        return FileEntry(self.long_name,
-                         self.short_name,
-                         self.dir.attributes,
-                         self.dir.write_date,
-                         self.dir.write_time,
-                         self.dir.write_datetime,
-                         offset,
-                         self.dir.data_cluster_number,
-                         self.count_sub_entries_offsets(),
-                         self.dir.size
-                         )
-
-    def count_sub_entries_offsets(self):
-        offsets = list()
-        offsets.append(self.dir.entry_start_offset)
-        for entry in self.ldir_list:
-            offsets.append(entry.entry_start_offset)
-        return tuple(offsets)
-
-    @property
-    def short_name(self):
-        return self.dir.name
-
-    @property
-    def long_name(self):
-        name = ''
-        for entries in self.ldir_list:
-            name += entries.name_part
-        return name.strip('\0 ￿')
-
-
 class FileEntry(Structures.FileEntryStructure):
     def __init__(self, long_name, short_name, attr, date, time, datetime, data_offset, data_cluster, entries_offsets,
                  size):
@@ -130,6 +82,52 @@ class FileEntry(Structures.FileEntryStructure):
 
     def is_correct_name(self, name):
         return name.lower() == self.short_name.lower() or name.lower() == self.long_name.lower()
+
+class FileEntryCollector:
+    def __init__(self, cluster_to_offset):
+        self.ldir_list = []
+        self.dir = None  # DirEntryShortFat32()
+        self._cluster_to_offset = cluster_to_offset
+
+    def append_ldir_entry(self, ldir_entry):
+        self.ldir_list.append(ldir_entry)
+
+    def set_dir(self, dir_entry):
+        self.dir = dir_entry
+
+    def get_file_entry(self):
+        offset = None
+        if self._cluster_to_offset:
+            offset = self._cluster_to_offset(self.dir.data_cluster_number)
+        return FileEntry(self.long_name,
+                         self.short_name,
+                         self.dir.attributes,
+                         self.dir.write_date,
+                         self.dir.write_time,
+                         self.dir.write_datetime,
+                         offset,
+                         self.dir.data_cluster_number,
+                         self.count_sub_entries_offsets(),
+                         self.dir.size
+                         )
+
+    def count_sub_entries_offsets(self):
+        offsets = list()
+        offsets.append(self.dir.entry_start_offset)
+        for entry in self.ldir_list:
+            offsets.append(entry.entry_start_offset)
+        return tuple(offsets)
+
+    @property
+    def short_name(self):
+        return self.dir.name
+
+    @property
+    def long_name(self):
+        name = ''
+        for entries in self.ldir_list:
+            name += entries.name_part
+        return name.strip('\0 ￿')
 
 
 class LongEntryReader(Structures.LongDirectoryEntryStructure):

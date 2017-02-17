@@ -29,7 +29,7 @@ class CopyUtils:
         pass
 
     def make_dirs_obj(self, path_obj):
-        start_clusters = self.fat_reader_utils.self.file_system_utils.new_directories(path_obj)
+        start_clusters = self.core.file_system_utils.new_directories(path_obj)
         return start_clusters
 
     def make_dir(self, file_name, attr, destination_dir):

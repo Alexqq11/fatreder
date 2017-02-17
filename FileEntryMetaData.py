@@ -27,6 +27,16 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
         self.attr_long_name = (15 == (self.attr_byte & 15))
         self.attr_string = self.get_attributes_string()
 
+    def get_attribute_dict(self):
+        attributes = dict()
+        attributes["read only"] = self.attr_read_only
+        attributes["hidden"] =  self.attr_hidden,
+        attributes["system"] =  self.attr_system,
+        attributes["volume"] = self.attr_volume_id,
+        attributes["directory"] = self.attr_directory
+        attributes["archive"] = self.attr_archive
+        attributes["lfn"] = self.attr_long_name
+        return attributes
     def set_string_args(self, attr_str):
         if 'l' in attr_str:
             attr_str += 'rhsv'
