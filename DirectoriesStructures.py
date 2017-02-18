@@ -18,6 +18,22 @@ class Directory:
         self._default_cluster_allocation_size = 1
         self._cluster_size = core.fat_bot_sector.cluster_size
         #self._last_empty_point = 0
+    def drop_data(self):
+        self.core = None
+        self._root_status = None
+        self._self_data_cluster = None
+        self._self_data_offset = None
+        self._parent_data_cluster = None
+        self._parent_data_offset = None
+        self.entries_list = None
+        self.searching_dict = None
+        self._short_names = None#tuple([entry.short_name for entry in file_entries_list])
+        self._long_names = None#tuple([entry.long_name for entry in file_entries_list])
+
+        self._writes_place = None #free_entry_place
+        self._free_entries_amount = None #free_entries_amount
+        self._default_cluster_allocation_size = None
+        self._cluster_size = None #core.fat_bot_sector.cluster_size
 
     def _find_place_for_entry(self, amount):
         last_index = 0
@@ -61,7 +77,11 @@ class Directory:
                 if index_pool:
                     index_pool = []
         return index_pool , last_index
-
+    def calculate_size_on_disk(self):
+        size = 0
+        for x in self.entries():
+            size += x.calculate_size_on_disk()
+        return size
     def _extend_directory(self):
         cluster , status = self.core.fat_tripper.extend_file(self.data_cluster, self._default_cluster_allocation_size)
         if not status:
@@ -73,6 +93,11 @@ class Directory:
         for offset in extended_clusters_offsets:
             self._writes_place += [(True, offset + x) for x in range(0, self._cluster_size, 32)]
         self._free_entries_amount += self._cluster_size // 32 * len(extended_clusters_offsets)
+
+    def delete(self, clear = False):
+        for x in self.entries():
+            x.delete(clear)
+        self.drop_data()
 
     def make_directory(self):
         pass

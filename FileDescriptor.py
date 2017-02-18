@@ -46,6 +46,7 @@ class FileDescriptor:
         self._long_name = None
         self._short_name = None
         self.name_generator = _NameGenerator()
+        self._extend_cache = None
         self._attributes = None
         self._write_datetime = None
         self._data_cluster = None
@@ -245,11 +246,13 @@ class FileDescriptor:
         self._free_old_offsets(self._entry_offset_in_dir)
         self._entry_offset_in_dir = []
         if self.attributes.directory:
-            directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(self._data_cluster)
-            directory.delete(clear_cluster)
+            if self.name not in [".", ".."]:
+                directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(self._data_cluster)
+                directory.delete(clear_cluster)
         if clear_cluster:
             self._delete_data_clusters(self._data_cluster)
-        self._delete_fat_chain(self._data_cluster)  # todo check fat cluster deleting for delete firs cluster
+        if self.name not in [".", ".."]:
+            self._delete_fat_chain(self._data_cluster)  # todo check fat cluster deleting for delete firs cluster
         self.drop_file_descriptor()
 
     def flush(self):
@@ -295,6 +298,8 @@ class FileDescriptor:
 
     def _get_file_allocated_clusters(self, cluster_number):
         return self.core.fat_tripper.get_file_clusters_list(cluster_number)
+    def _get_cluster_offset(self, cluster):
+        return self.core.fat_bot_sector.calc_cluster_offset(cluster)
 
     def calculate_size_on_disk(self):
         size_in_bytes = 0
@@ -302,36 +307,59 @@ class FileDescriptor:
             if not self.core_seted:
                 raise Exception("Core missed, please init core to use this func")
             directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(self._data_cluster)
-            size_in_bytes += directory.size()
+            size_in_bytes += len(self._get_file_allocated_clusters(self._data_cluster)) * self._cluster_size
+            size_in_bytes += directory.calculate_size_on_disk()
         else:
-            clusters = self._get_file_allocated_clusters(self._data_cluster)  # todo make this operation more easy
-            size_in_bytes += len(clusters) * self._cluster_size
+            # todo make this operation more easy
+            size_in_bytes += len(self._get_file_allocated_clusters(self._data_cluster)) * self._cluster_size
         return size_in_bytes
 
     def write_data_into_file(self,file_size ,data_stream, rewrite= True): # todo make normal file add data with add to exist file
-        self.extend_file(file_size)
-        for data, offset in zip(data_stream, self._data_offsets_stream()):
+        file_offset_stream = None
+        if rewrite:
+            start_cluster = self.extend_file(file_size, delete_excessive_allocation=True)
+            file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster))
+        else:
+            start_cluster = self.extend_file(file_size, to_selected_size=False)
+            file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster))
+        for data, offset in zip(data_stream, ):
             self.core.image_reader.set_data_global(offset, data)
 
     def _get_file_last_cluster(self):
-        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-1:][0]
+        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-1:][0] # maybe if it will be a stream we have a problem
 
-    def _data_offsets_stream(self):
+    def _get_file_number_cluster_from_end(self, number):
+        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-abs(number):][0]
+
+    def _data_offsets_stream(self, start_cluster_offset):
+        get_offset = False
         for x in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
-            yield x
+            if x == start_cluster_offset:
+                get_offset = True
+            if get_offset:
+                yield x
+
     def extend_file(self, file_size, to_selected_size = True,delete_excessive_allocation = False):
         preferred_size_in_clusters = self._count_clusters(file_size)
         current_size_in_cluster = self._count_clusters(self.calculate_size_on_disk())
         extend_size = (preferred_size_in_clusters - current_size_in_cluster) if to_selected_size else preferred_size_in_clusters
         if extend_size < 0:
             if delete_excessive_allocation:
-                #del it
-                pass    # to doing that we need to check how fat tripper del fat_table chain
+                del_start_cluster = self._get_file_number_cluster_from_end(extend_size)
+                self._delete_fat_chain(del_start_cluster)
+                self.core.fat_tripper.set_cluster_entry(del_start_cluster)
+                return self._data_cluster
+                # to doing that we need to check how fat tripper del fat_table chain
             else:
+                raise Exception("unforeseen operation , you tryied negative file extend")
                 # raise  unforeseen operation , you tryied negative file extend
                 pass
         else:
             last , status = self.core.fat_tripper.extend_file(self._data_cluster, extend_size)
+            if not status:
+                raise Exception("No  memory to allocation")
+            else:
+                return last
             # raise here exception if allocation status equal false
 
 
