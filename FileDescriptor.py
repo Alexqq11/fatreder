@@ -37,8 +37,9 @@ class ShortEntryOffsets:  # (Structures.ShortDirectoryEntryStructure):
 
 
 class FileDescriptor:
-    def __init__(self, core):
-        self.core = core
+    def __init__(self):
+        self.core = None
+        self.parent_directory = None
         self.entries_data = []
         self._ldir = LongEntryOffsets()
         self._dir = ShortEntryOffsets()
@@ -48,12 +49,45 @@ class FileDescriptor:
         self._attributes = None
         self._write_datetime = None
         self._data_cluster = None
-        self._cluster_size = core.fat_bot_sector.cluster_size
+        self._cluster_size = None
+        self._entry_offset_in_dir = []
         self.exist = False
-        # FileEntryMetaData.DateTimeFormat
+        self.core_seted = False
+        self.parent_directory_seted = False
 
-    def new_entry_from_bytes(self, entries_data):
+    """
+    //////////////////////////////////////
+    ////// START CONSTRUCTOR ZONE   //////
+    //////////////////////////////////////
+    """
+
+    def drop_file_descriptor(self):
+        self.core = None
+        self.parent_directory = None
+        self.entries_data = []
+        self._long_name = None
+        self._short_name = None
+        self._attributes = None
+        self._write_datetime = None
+        self._data_cluster = None
+        self._cluster_size = None
+        self._entry_offset_in_dir = []
+        self.exist = False
+        self.core_seted = False
+        self.parent_directory_seted = False
+
+    def set_core(self, core):
+        self.core = core
+        self._cluster_size = core.fat_bot_sector.cluster_size
+        self.core_seted = True
+
+    def set_parent_directory(self, parent_directory_descriptor):
+        self.parent_directory = parent_directory_descriptor
+        self.parent_directory_seted = True
+
+    def new_entry_from_bytes(self, entries_data, entry_offsets_in_dir):
         self.entries_data = entries_data  # todo think may be we need check empty list
+        self._entry_offset_in_dir = entry_offsets_in_dir
         self._short_name = self._read_short_name()
         if len(self.entries_data) > 1:
             self._long_name = self._read_long_name()
@@ -91,7 +125,7 @@ class FileDescriptor:
             entry = self.entries_data[0]
             self.entries_data = []
             self.entries_data.append(entry)
-        name_parts = self.split_name(file_name)
+        name_parts = self._split_name(file_name)
         for number, name_part in enumerate(name_parts):
             self.entries_data.append(
                 self._create_long_directory_entry(number, name_part, check_sum, number + 1 == len(name_parts)))
@@ -105,6 +139,26 @@ class FileDescriptor:
         entry += b"\x00\x00"
         entry += name_parts[2]
         return entry
+
+    def _generate_address(self, data_cluster=None, size=None):
+        if size is None:
+            size = self._cluster_size
+        if data_cluster is not None:
+            self._data_cluster = data_cluster
+            return self._parse_data_cluster(data_cluster)  # todo  make existing allocation here
+        else:
+            if not self.core_seted:
+                raise Exception("Core module missing")
+            start_cluster = self._allocate_place(size)
+            self._data_cluster = start_cluster
+            return self._parse_data_cluster(start_cluster)
+
+    """
+    //////////////////////////////////////
+    ////// END OF CONSTRUCTORS ZONE //////
+    ////// START OPEN METHODS ZONE  //////
+    //////////////////////////////////////
+    """
 
     @property
     def name(self):
@@ -120,11 +174,15 @@ class FileDescriptor:
             self._write_long_directory(new_file_name, check_sum)
 
     @property
+    def attr_string(self):
+        return self.attributes.attributes
+
+    @property
     def attributes(self):
         return self._attributes
 
     @attributes.setter
-    def attributes(self, attr):
+    def attributes(self, attr):  # todo lock changing directory attribute
         self._attributes = FileEntryMetaData.DirectoryAttributesGetter(attr)
         self._write_attributes()
         pass
@@ -140,35 +198,21 @@ class FileDescriptor:
     @write_datetime.setter
     def write_datetime(self, date_time):
         self._write_datetime = date_time
+        self._write_write_datetime_into_entry(date_time)
 
-    def _write_date_time(self):
-        pass  # todo _write  it
+    def _write_write_datetime_into_entry(self, date_time):
+        date = FileEntryMetaData.DateTimeGetter(date_time)
+        entry = self._replace_data_in_write(self.entries_data[0], date.time_bytes, *self._dir.write_time)
+        entry = self._replace_data_in_write(entry, date.date_bytes, *self._dir.write_date)
+        self.entries_data[0] = entry
 
-    def get_data_to_flush(self):
-        pass
-
-    def calculate_size_on_disk(self):
-        pass
-
-    def raw_size(self):
-        pass
-
-    def update_size_in_descriptor(self):
-        pass
-
-    @property
-    def attr_string(self):
-        return self.attributes.attributes
-
-    """
     @property
     def date(self):
-        return self._write_datetime.t
+        return self._write_datetime.date()
 
     @property
     def time(self):
-        return self._write_time
-    """
+        return self._write_datetime.time()
 
     @property
     def data_offset(self):
@@ -177,10 +221,125 @@ class FileDescriptor:
     @property
     def data_cluster(self):
         return self._data_cluster
-    """
+
     @property
-    def check_sum(self):
-        return self._check_sum
+    def size(self):
+        return self.raw_size()
+
+    def raw_size(self):
+        return self._read_data(self.entries_data[0], *self._dir.file_size)
+
+    def update_size_in_descriptor(self):
+        size = self.calculate_size_on_disk()
+        size_data = struct.pack('<I', size)
+        self.entries_data = self._replace_data_in_write(self.entries_data[0], size_data, *self._dir.file_size)
+
+    """
+       //////////////////////////////////////
+       //////   END OPEN METHODS ZONE  //////
+       //////   DISK OPERATIONS ZONE   //////
+       //////////////////////////////////////
+    """
+
+    def delete(self, clear_cluster=False):
+        self._free_old_offsets(self._entry_offset_in_dir)
+        self._entry_offset_in_dir = []
+        if self.attributes.directory:
+            directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(self._data_cluster)
+            directory.delete(clear_cluster)
+        if clear_cluster:
+            self._delete_data_clusters(self._data_cluster)
+        self._delete_fat_chain(self._data_cluster)  # todo check fat cluster deleting for delete firs cluster
+        self.drop_file_descriptor()
+
+    def flush(self):
+        if not self.parent_directory_seted:
+            raise Exception("Parent directory missing")
+        if len(self.entries_data) <= len(self._entry_offset_in_dir):
+            self._write_entry_on_disk(self.entries_data,
+                                      self._entry_offset_in_dir)  # check is always offsets order correct
+            self._free_old_offsets(self._entry_offset_in_dir[len(self.entries_data):])
+            self._entry_offset_in_dir = self._entry_offset_in_dir[:len(self.entries_data)]
+        else:
+            self._free_old_offsets(self._entry_offset_in_dir)
+            self._entry_offset_in_dir = []
+            self._allocate_offsets_for_entry()
+            self._write_entry_on_disk(self.entries_data, self._entry_offset_in_dir)
+
+    def _write_entry_on_disk(self, entries_data, entry_offsets):
+        for entry_data, entry_offset in zip(entries_data, entry_offsets):
+            self.core.image_reader.set_data_global(entry_offset, entry_data)
+
+    def _delete_fat_chain(self, start_cluster):
+        self.core.fat_tripper.delete_file_fat_chain(start_cluster)
+
+    def _delete_file_entry_on_disk(self, file_entries_offsets, clean=False):
+        data = b'\xe5'
+        if clean:
+            data = b'\x00' * 32
+        for file_entry_offset in file_entries_offsets:
+            self.core.image_reader.set_data_global(file_entry_offset, data)
+
+    def _delete_data_clusters(self, start_cluster):
+        offsets = self.core.fat_tripper.get_file_clusters_offsets_list(start_cluster)
+        zero_cluster = b'\x00' * self._cluster_size
+        for offset in offsets:
+            self.core.image_reader.set_data_global(offset, zero_cluster)
+
+    def _free_old_offsets(self, offsets):
+        self.parent_directory._mark_free_place(offsets)
+        self._delete_file_entry_on_disk(offsets, clean=True)
+
+    def _allocate_offsets_for_entry(self):
+        self._entry_offset_in_dir = self.parent_directory._get_entry_place_to_flush(len(self.entries_data))
+
+    def _get_file_allocated_clusters(self, cluster_number):
+        return self.core.fat_tripper.get_file_clusters_list(cluster_number)
+
+    def calculate_size_on_disk(self):
+        size_in_bytes = 0
+        if self.attributes.directory:
+            if not self.core_seted:
+                raise Exception("Core missed, please init core to use this func")
+            directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(self._data_cluster)
+            size_in_bytes += directory.size()
+        else:
+            clusters = self._get_file_allocated_clusters(self._data_cluster)  # todo make this operation more easy
+            size_in_bytes += len(clusters) * self._cluster_size
+        return size_in_bytes
+
+    def write_data_into_file(self,file_size ,data_stream, rewrite= True): # todo make normal file add data with add to exist file
+        self.extend_file(file_size)
+        for data, offset in zip(data_stream, self._data_offsets_stream()):
+            self.core.image_reader.set_data_global(offset, data)
+
+    def _get_file_last_cluster(self):
+        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-1:][0]
+
+    def _data_offsets_stream(self):
+        for x in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
+            yield x
+    def extend_file(self, file_size, to_selected_size = True,delete_excessive_allocation = False):
+        preferred_size_in_clusters = self._count_clusters(file_size)
+        current_size_in_cluster = self._count_clusters(self.calculate_size_on_disk())
+        extend_size = (preferred_size_in_clusters - current_size_in_cluster) if to_selected_size else preferred_size_in_clusters
+        if extend_size < 0:
+            if delete_excessive_allocation:
+                #del it
+                pass    # to doing that we need to check how fat tripper del fat_table chain
+            else:
+                # raise  unforeseen operation , you tryied negative file extend
+                pass
+        else:
+            last , status = self.core.fat_tripper.extend_file(self._data_cluster, extend_size)
+            # raise here exception if allocation status equal false
+
+
+    """
+           //////////////////////////////////////
+           ////// END DISK OPERATIONS ZONE //////
+           ////// START ENTRY WORKERS ZONE //////
+           //////////////////////////////////////
     """
 
     def _replace_data_in_write(self, were, data, offset, length, pack):
@@ -195,17 +354,6 @@ class FileDescriptor:
         first_cluster_high, first_cluster_low = self._generate_address(data_cluster, None)
         entry = self._replace_data_in_write(self.entries_data[0], first_cluster_high, *self._dir.first_cluster_high)
         self.entries_data[0] = self._replace_data_in_write(entry, first_cluster_low, *self._dir.first_cluster_low)
-
-    def _generate_address(self, data_cluster=None, size=None):
-        if size is None:
-            size = self._cluster_size
-        if data_cluster is not None:
-            self._data_cluster = data_cluster
-            return self._parse_data_cluster(data_cluster)  # todo  make existing allocation here
-        else:
-            start_cluster = self._allocate_place(size)
-            self._data_cluster = start_cluster
-            return self._parse_data_cluster(start_cluster)
 
     def _read_short_name(self):
         processing_string = self._read_data(self.entries_data[0], *self._dir.name).decode('cp866')
@@ -259,12 +407,6 @@ class FileDescriptor:
             FatReaderExceptions.AllocationMemoryOutException()
         return data_cluster
 
-    def _delete_data_clusters(self, start_cluster):
-        offsets = self.core.fat_tripper.get_file_clusters_offsets_list(start_cluster)
-        zero_cluster = b'\x00' * self._cluster_size
-        for offset in offsets:
-            self.core.image_reader.set_data_global(offset, zero_cluster)
-
     def _parse_data_cluster(self, data_cluster):
         data_cluster_bytes = struct.pack('<i', data_cluster)
         first_cluster_low = data_cluster_bytes[0:2]
@@ -277,7 +419,7 @@ class FileDescriptor:
         write_time = time_converter.time_bytes
         return write_time, write_date
 
-    def split_name(self, name):
+    def _split_name(self, name):
         name_parts = []
         for x in range(0, len(name), 13):
             name_parts.append(self._name_part_to_bytes(name[x: x + 13]))
@@ -324,6 +466,7 @@ class FileDescriptor:
 
 class _NameGenerator:
     def __init__(self):
+        self.dir_listing = None
         pass
 
     def get_oem_name(self, name, dir_listing):
@@ -397,7 +540,7 @@ class _NameGenerator:
         return oem_name, incorrect_translate
 
     def _check_name(self, oem_name):
-        return not oem_name in self.dir_listing
+        return oem_name not in self.dir_listing
 
     def _join_name(self, prefix, postfix, extension):
         if (8 - len(prefix)) >= len(postfix):
@@ -413,5 +556,5 @@ class _NameGenerator:
                 marker = oem_name.split(b'.')
                 added_str = ('~' + str(x)).encode("cp866")
                 new_name = self._join_name(marker[0], added_str, marker[1])
-                if (self._check_name(new_name)):
+                if self._check_name(new_name):
                     return new_name

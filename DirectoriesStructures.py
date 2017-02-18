@@ -27,6 +27,26 @@ class Directory:
             if len(index_pool) != amount:
                 self._extend_directory()
         return index_pool
+    def _get_entry_place_to_flush(self, amount):
+        index_pool = self._find_place_for_entry(amount)
+        offsets_pool = []
+        for x in index_pool:
+            status, offset = self._writes_place[x]
+            offsets_pool.append(offset)
+            self._writes_place[x] = (False, offset)
+        return reversed(offsets_pool)
+
+
+    def _mark_free_place(self, offsets):
+        index_pool = []
+        for number ,(status, offset) in enumerate(self._writes_place):
+            if offset in offsets:
+                index_pool.append(number)
+            if len(index_pool) == len(offsets):
+                break
+        for x in index_pool:
+            status, offset = self._writes_place[x]
+            self._writes_place[x] = (True, offset)
 
     def try_found_place_for_entry(self, amount, start_position=0):
         index_pool = []
@@ -124,8 +144,10 @@ class Directory:
                 self._parent_data_offset = file_entries_list[0].entries_offsets[0]
                 self._root_status = True
             else:
+                # check cluster number ? it will be helpful to find type of error
                 pass  # todo rase here something
         else:
+            # this can happends if we create new directory  but not create  . .. dirs
             pass
 
     def get_file_data_cluster(self, file_name):  # todo make it more universal in future
