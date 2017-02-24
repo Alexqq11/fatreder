@@ -4,6 +4,7 @@ import struct
 
 import FatReaderExceptions
 import FileEntryMetaData
+import FilenameConflictResolver
 
 
 class LongEntryOffsets:  # (Structures.LongDirectoryEntryStructure):
@@ -45,7 +46,6 @@ class FileDescriptor:
         self._dir = ShortEntryOffsets()
         self._long_name = None
         self._short_name = None
-        self.name_generator = _NameGenerator()
         self._extend_cache = None
         self._attributes = None
         self._write_datetime = None
@@ -98,9 +98,9 @@ class FileDescriptor:
         self._data_cluster = self._read_data_cluster()
         pass
 
-    def new_entry(self, file_name, dir_listing, create_long=True, data_cluster=None, size=None, attr="",
+    def new_entry(self, file_name, short_short_filename, create_long=True, data_cluster=None, size=None, attr="",
                   date_time=None):
-        entry = self.name_generator.get_oem_name(file_name, dir_listing)
+        entry = short_short_filename
         self._short_name = entry.decode("cp866")
         self._long_name = self._short_name
         self._attributes = self._parse_attributes(attr)
@@ -168,9 +168,11 @@ class FileDescriptor:
         else:
             return self._short_name.lower()
 
-    def rename(self, new_file_name, short_names_listing, long_names_listing=None):
-        self._write_short_name(new_file_name, short_names_listing)
-        if long_names_listing is not None:
+    def rename(self, new_file_name, short_names, long_names=None):  # TODO Rewrite
+        names = FilenameConflictResolver.NameConflictResolver()
+        long_name, short_name = names.get_new_names(new_file_name, self.attributes.directory, short_names, long_names)
+        self._write_short_name(short_name)
+        if long_names:
             check_sum = self._calc_check_sum(self._read_data(self.entries_data[0], *self._dir.name))
             self._write_long_directory(new_file_name, check_sum)
 
@@ -224,6 +226,14 @@ class FileDescriptor:
         return self._data_cluster
 
     @property
+    def long_name(self):
+        return self._long_name
+
+    @property
+    def short_name(self):
+        return self._short_name
+
+    @property
     def size(self):
         return self.raw_size()
 
@@ -234,6 +244,19 @@ class FileDescriptor:
         size = self.calculate_size_on_disk()
         size_data = struct.pack('<I', size)
         self.entries_data = self._replace_data_in_write(self.entries_data[0], size_data, *self._dir.file_size)
+
+    def to_string(self, long=False, all=False):
+        file_representation = ''
+        if long and ("h" not in self.attr_string or all):
+            file_representation += self.date.isoformat() + ' '
+            file_representation += self.time.isoformat() + '    '
+            file_representation += self.attributes.get_attributes_string() + '     '
+        if "h" not in self.attr_string or all:
+            file_representation += self.name
+        return file_representation
+
+    def is_correct_name(self, name):
+        return name.lower() == self.short_name.lower() or name.lower() == self.long_name.lower()
 
     """
        //////////////////////////////////////
@@ -258,6 +281,9 @@ class FileDescriptor:
     def flush(self):
         if not self.parent_directory_seted:
             raise Exception("Parent directory missing")
+        self._flush()
+
+    def _flush(self):
         if len(self.entries_data) <= len(self._entry_offset_in_dir):
             self._write_entry_on_disk(self.entries_data,
                                       self._entry_offset_in_dir)  # check is always offsets order correct
@@ -298,6 +324,7 @@ class FileDescriptor:
 
     def _get_file_allocated_clusters(self, cluster_number):
         return self.core.fat_tripper.get_file_clusters_list(cluster_number)
+
     def _get_cluster_offset(self, cluster):
         return self.core.fat_bot_sector.calc_cluster_offset(cluster)
 
@@ -314,7 +341,8 @@ class FileDescriptor:
             size_in_bytes += len(self._get_file_allocated_clusters(self._data_cluster)) * self._cluster_size
         return size_in_bytes
 
-    def write_data_into_file(self,file_size ,data_stream, rewrite= True): # todo make normal file add data with add to exist file
+    def write_data_into_file(self, file_size, data_stream,
+                             rewrite=True):  # todo make normal file add data with add to exist file
         file_offset_stream = None
         if rewrite:
             start_cluster = self.extend_file(file_size, delete_excessive_allocation=True)
@@ -326,7 +354,8 @@ class FileDescriptor:
             self.core.image_reader.set_data_global(offset, data)
 
     def _get_file_last_cluster(self):
-        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-1:][0] # maybe if it will be a stream we have a problem
+        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-1:][
+            0]  # maybe if it will be a stream we have a problem
 
     def _get_file_number_cluster_from_end(self, number):
         return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-abs(number):][0]
@@ -339,10 +368,11 @@ class FileDescriptor:
             if get_offset:
                 yield x
 
-    def extend_file(self, file_size, to_selected_size = True,delete_excessive_allocation = False):
+    def extend_file(self, file_size, to_selected_size=True, delete_excessive_allocation=False):
         preferred_size_in_clusters = self._count_clusters(file_size)
         current_size_in_cluster = self._count_clusters(self.calculate_size_on_disk())
-        extend_size = (preferred_size_in_clusters - current_size_in_cluster) if to_selected_size else preferred_size_in_clusters
+        extend_size = (
+            preferred_size_in_clusters - current_size_in_cluster) if to_selected_size else preferred_size_in_clusters
         if extend_size < 0:
             if delete_excessive_allocation:
                 del_start_cluster = self._get_file_number_cluster_from_end(extend_size)
@@ -355,13 +385,12 @@ class FileDescriptor:
                 # raise  unforeseen operation , you tryied negative file extend
                 pass
         else:
-            last , status = self.core.fat_tripper.extend_file(self._data_cluster, extend_size)
+            last, status = self.core.fat_tripper.extend_file(self._data_cluster, extend_size)
             if not status:
                 raise Exception("No  memory to allocation")
             else:
                 return last
-            # raise here exception if allocation status equal false
-
+                # raise here exception if allocation status equal false
 
     """
            //////////////////////////////////////
@@ -373,8 +402,8 @@ class FileDescriptor:
     def _replace_data_in_write(self, were, data, offset, length, pack):
         return were[0: offset] + data + were[offset + length:]
 
-    def _write_short_name(self, file_name, dir_listing):
-        name_data = self.name_generator.get_oem_name(file_name, dir_listing)
+    def _write_short_name(self, file_name):
+        name_data = file_name
         self.entries_data[0] = self._replace_data_in_write(self.entries_data[0], name_data, *self._dir.name)
         self._short_name = name_data.decode("cp866")
 
@@ -490,99 +519,3 @@ class FileDescriptor:
             else:
                 check_sum = unsigned_char(unsigned_char(check_sum >> 0x1).value + x).value
         return check_sum
-
-
-class _NameGenerator:
-    def __init__(self):
-        self.dir_listing = None
-        pass
-
-    def get_oem_name(self, name, dir_listing):
-        self.dir_listing = dir_listing
-        if name not in [".", ".."]:  # fixme tuple
-            oem_name, incorrect_translate = self._generate_short_name(name)
-            oem_name = self._generation_last_value(oem_name, incorrect_translate)
-            return self._write_short_name(oem_name)
-        else:
-            return self._write_short_name(name.encode("cp866"))
-
-    def _write_short_name(self, oem_name):
-        marker = None
-        name = None
-        extension = None
-        if oem_name not in [b".", b".."]:  # default_correct_name
-            marker = oem_name.split(b'.')
-            marker.append(b'')
-            name, extension = marker[0], marker[1]
-            name = name[0:8]
-            extension = extension[0:3]
-        else:
-            name = oem_name
-            extension = b''
-        return name + (b'\x20' * (11 - len(name) - len(extension))) + extension
-
-    def _is_bad_literal(self, liter):
-        unsupported_values = b'\x22\x2a\x2b\x2c\x2f\x3a\x3b\x3c\x3d\x3e\x3f\x5b\x5c\x5d\x5e\x7c'
-        return liter < b'\x20' and liter != b'\x05' or liter in unsupported_values
-
-    def _encode_name_to_oem_encoding(self, name):
-        oem_string = b''
-        oem_liter = b''
-        incorrect_translate = False
-        for liter in name:
-            try:
-                oem_liter = liter.encode("cp866")
-                if self._is_bad_literal(oem_liter):
-                    incorrect_translate = True
-                    oem_liter = b'_'
-            except UnicodeEncodeError:  # помоему cp866 сжирает любой шлак, который ей кормят:D
-                oem_liter = b'_'
-                incorrect_translate = True
-            oem_string += oem_liter
-        return oem_string, incorrect_translate
-
-    def _clear_name_content(self, name):
-        name = name.upper()
-        translated_name = name.replace(' ', '')
-        extension_marker = translated_name[::-1].find('.', 0)  # fixme rfind
-        if extension_marker != -1:
-            translated_name = translated_name[:-extension_marker].replace('.', '') + '.' + translated_name[
-                                                                                           -extension_marker:]
-        return translated_name, extension_marker
-
-    def _translate_to_short_name(self, oem_string: bytes, extension_marker):
-        doth_position = oem_string.find(b'.', 0)
-        marker = doth_position
-        if doth_position == -1:
-            marker = 9
-        oem_name = oem_string[0: min(8, marker)]
-        if extension_marker != -1:
-            oem_name += b'.'
-            oem_name += oem_string[doth_position + 1: doth_position + 4]
-        return oem_name
-
-    def _generate_short_name(self, name: str):
-        translated_name, extension_marker = self._clear_name_content(name)
-        oem_string, incorrect_translate = self._encode_name_to_oem_encoding(translated_name)
-        oem_name = self._translate_to_short_name(oem_string, extension_marker)
-        return oem_name, incorrect_translate
-
-    def _check_name(self, oem_name):
-        return oem_name not in self.dir_listing
-
-    def _join_name(self, prefix, postfix, extension):
-        if (8 - len(prefix)) >= len(postfix):
-            return prefix + postfix + b'.' + extension
-        else:
-            return prefix[0:8 - len(postfix)] + postfix + b'.' + extension
-
-    def _generation_last_value(self, oem_name, marker=False):
-        if not marker and len(oem_name) < 13 and self._check_name(oem_name):
-            return oem_name
-        else:
-            for x in range(1, 1000000):
-                marker = oem_name.split(b'.')
-                added_str = ('~' + str(x)).encode("cp866")
-                new_name = self._join_name(marker[0], added_str, marker[1])
-                if self._check_name(new_name):
-                    return new_name
