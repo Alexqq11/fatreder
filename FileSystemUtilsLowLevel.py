@@ -1,12 +1,7 @@
 import posixpath
 
-import DirectoriesStructures
+import DirectoryDescriptor
 import FileReader
-import FileWriter
-
-"""
-if path doesn't exist you can get only raw data safety
-"""
 
 
 class PathObject:
@@ -92,19 +87,15 @@ class PathObject:
 class FileSystemUtilsLowLevel:
     def __init__(self, core):
         self.core = core
-        self.directory_reader = FileReader.DirectoryParser(core)
-        self.file_writer = FileWriter.FileWriter(core)
+        self.directory_reader = FileReader.DirectoryParser()
+        self.directory_reader.init_core(core)
+        # self.file_writer = FileWriter.FileWriter(core)
 
     def calc_cluster_offset(self, cluster_number):
         return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
 
     def parse_directory_descriptor(self, data_cluster):
-        return self.directory_reader.nio_parse_directory(self.calc_cluster_offset(data_cluster))
-
-    def new_directory(self, path_obj: PathObject, directory_descriptor: DirectoriesStructures.Directory, attr=''):
-        attr += 'd'
-        start_cluster = self.file_writer.new_file(path_obj.file_name, attr, directory_descriptor)
-        return start_cluster
+        return self.directory_reader.parse_at_cluster(data_cluster)
 
     def get_directory_descriptor(self, path, working_directory):
         path = posixpath.normpath(path)
@@ -132,21 +123,17 @@ class FileSystemUtilsLowLevel:
                 intermediate_directory = working_directory
         return intermediate_directory, operation_status, track_num
 
-    def get_canonical_path(self, directory_descriptor: DirectoriesStructures.Directory):
+    def get_canonical_path(self, directory_descriptor: DirectoryDescriptor.DirectoryDescriptor):
         parent_cluster = directory_descriptor.parent_directory_cluster
         own_cluster = directory_descriptor.data_cluster
         temp_dir = directory_descriptor
-        path = '/'
         name_stack = []
         while not temp_dir.is_root:
             temp_dir = self.parse_directory_descriptor(parent_cluster)
             fs = temp_dir.find(own_cluster, 'by_address')
-            # print(fs , fs.name, own_cluster , path ,  sep="     ")
-            # path = posixpath.join(fs.name, path)
             name_stack.append(fs.name)
             own_cluster = parent_cluster
             parent_cluster = temp_dir.parent_directory_cluster
-        # print(name_stack)
         path = posixpath.join("/", *reversed(name_stack))
         return posixpath.normpath(path)
 

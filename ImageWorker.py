@@ -11,7 +11,7 @@ class ImageReader:
         self.readonly = None
 
     def _set_mapped_image(self, params="r+b"):
-        length = 512 * 1024 * 1024
+        # length = 512 * 1024 * 1024
         if self.image:
             self.close_reader()
         if params == "r+b":
@@ -22,7 +22,8 @@ class ImageReader:
         self.file_stream = f
         self.image = f  # self.image = mmap.mmap(f.fileno(), length, offset=0)
 
-    def _get_parse_mod(self, size):
+    @staticmethod
+    def _get_parse_mod(size):
         mod_parameter = ''
         if size == 1:
             mod_parameter = '<B'
@@ -49,12 +50,8 @@ class ImageReader:
             self._set_mapped_image()
         self.image.seek(offset)
         buffer = self.image.read(size)
-        temp_buf = buffer
         if convert_integer:
-            try:
-                buffer = self.convert_to_int(buffer, size)
-            except Exception:
-                print(temp_buf, "  ", size, offset)  # struct.unpack(self._get_parse_mod(size), buffer)[0]
+            buffer = self.convert_to_int(buffer, size)
         return buffer
 
     def get_data_local(self, local_offset, size, convert_integer=False):
@@ -62,13 +59,8 @@ class ImageReader:
             self._set_mapped_image()
         self.image.seek(self.file_global_offset + local_offset)
         buffer = self.image.read(size)
-        temp_buf = buffer
         if convert_integer:
-            try:
-                buffer = self.convert_to_int(buffer, size)
-            except Exception:
-                print(temp_buf, "  ", size)
-        # struct.unpack(self._get_parse_mod(size), buffer)[0]
+            buffer = self.convert_to_int(buffer, size)
         return buffer
 
     def close_reader(self):

@@ -1,11 +1,11 @@
+"""
 import os
 import os.path
 
-import DirectoriesStructures
+import DirectoryDescriptor
 import FatReaderExceptions
 import FileReader
 import FileSystemUtilsLowLevel
-import FileWriter
 import IOmodule
 
 
@@ -15,7 +15,8 @@ class CopyUtils:
         self.low_level_utils = fat_reader_utils.low_level_utils
         self.fat_reader_utils = fat_reader_utils
         self.file_writer = FileWriter.FileWriter(core)
-        self.file_reader = FileReader.DataParser(core)
+        self.file_reader = FileReader.DirectoryParser()
+        self.file_reader.init_core(core)
 
     @property
     def working_directory(self):
@@ -109,6 +110,8 @@ class CopyUtils:
             f.close()
         for dir_ in from_dir.get_files_sources():
             dir_path = os.path.join(os_path, dir_.name)
-            os_files.create_dir(dir_path)
-            from_dir = self.low_level_utils.parse_directory_descriptor(dir_.data_cluster)
-            self._write_copy_data_to_os(from_dir, dir_path)
+   #         os_files.create_dir(dir_path)
+   #         from_dir = self.low_level_utils.parse_directory_descriptor(dir_.data_cluster)
+  #        #  self._write_copy_data_to_os(from_dir, dir_path)
+"""
+""""""""""""

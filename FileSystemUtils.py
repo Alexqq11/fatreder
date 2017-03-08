@@ -1,10 +1,9 @@
 import posixpath
 
 import CopyUtils
-import DirectoriesStructures
+import DirectoryDescriptor
 import FileReader
 import FileSystemUtilsLowLevel
-import FileWriter
 from FatReaderExceptions import *
 
 
@@ -13,7 +12,6 @@ class RemoveUtils:
         self.core = core
         self.low_level_utils = fat_reader_utils.low_level_utils
         self.fat_reader_utils = fat_reader_utils
-        self.file_writer = FileWriter.FileWriter(core)
 
     @property
     def working_directory(self):
@@ -24,29 +22,21 @@ class RemoveUtils:
         self.fat_reader_utils.working_directory = value
 
     def move(self, from_path_obj: FileSystemUtilsLowLevel.PathObject, to_path_obj: FileSystemUtilsLowLevel.PathObject):
-        self.file_writer.transfer_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
+       # self.file_writer.transfer_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
         self.refresh()
 
     def remove_file(self, path_obj: FileSystemUtilsLowLevel.PathObject, recoverable=True, clean=False):
-        self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable, clean)
+        path_obj.path_descriptor.delete()
+        ## self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable, clean)
         self.refresh()
 
     def remove_directory(self, path_obj: FileSystemUtilsLowLevel.PathObject, force=False, clear=True):
-        self._remove_current_directory(path_obj.path_descriptor)
-        self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable=False, clean=clear)
-
-    def _remove_current_directory(self, directory_descriptor: DirectoriesStructures.Directory, force=False, clear=True):
-        for file_descriptor in directory_descriptor.entries():
-            if file_descriptor.attributes.directory:
-                next_directory_descriptor = self.low_level_utils.parse_directory_descriptor(
-                    file_descriptor.data_cluster)
-                self._remove_current_directory(next_directory_descriptor, force, clear)
-                self.file_writer.delete_directory_or_file(file_descriptor, recoverable=False, clean=clear)
-            else:
-                self.file_writer.delete_directory_or_file(file_descriptor, recoverable=False, clean=clear)
+        path_obj.path_descriptor.delete()
+        #self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable=False, clean=clear)
 
     def rename(self, path_obj: FileSystemUtilsLowLevel.PathObject, new_name):
-        self.file_writer.rename(new_name, path_obj.parent_descriptor, path_obj.file_fs_descriptor)
+        path_obj.parent_descriptor.rename(path_obj.file_name, new_name)
+        #self.file_writer.rename(new_name, path_obj.parent_descriptor, path_obj.file_fs_descriptor)
         self.refresh()
 
     def refresh(self):
@@ -58,7 +48,6 @@ class FileSystemUtils:
         self.core = core
         self.low_level_utils = fat_reader_utils.low_level_utils
         self.fat_reader_utils = fat_reader_utils
-        self.file_writer = FileWriter.FileWriter(core)
         self.file_reader = FileReader.DataParser(core)
 
     @property
@@ -81,7 +70,7 @@ class FileSystemUtils:
             output = self.low_level_utils.get_directory_descriptor(next_path, last_existing_dir)
             last_existing_dir, status, stop_number = output
             path_parts = next_path.split('/')
-            start_cluster = self.file_writer.new_file(path_parts[stop_number], "d", last_existing_dir)
+            start_cluster = last_existing_dir.make_directory(path_parts[stop_number])
             start_clusters.append((start_cluster, path_parts[stop_number]))
             last_existing_dir = self.low_level_utils.parse_directory_descriptor(start_cluster)
             next_path = posixpath.normpath(posixpath.join('', *path_parts[stop_number+1:]))
@@ -132,7 +121,7 @@ class FatReaderUtils:
         self._working_directory = self.low_level_utils.parse_directory_descriptor(2)
         self.file_system_utils = FileSystemUtils(core, self)
         self.remove_utils = RemoveUtils(core, self)
-        self.copy_utils = CopyUtils.CopyUtils(core, self)
+        #self.copy_utils = CopyUtils.CopyUtils(core, self)
 
     @property
     def working_directory(self):
@@ -158,20 +147,20 @@ class FatReaderUtils:
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
-        self.copy_utils.copy_in_image(path_obj_from, path_obj_to)
+        #self.copy_utils.copy_in_image(path_obj_from, path_obj_to)
         pass
 
     def cpf(self, path_from_os, path_to):
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if path_obj_to.is_file:
             raise InvalidPathException()
-        self.copy_utils.copy_from_os(path_from_os, path_obj_to)
+        #self.copy_utils.copy_from_os(path_from_os, path_obj_to)
 
     def cpt(self, path_from, path_to_os):
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         if not path_obj_from.is_exist:
             raise InvalidPathException()
-        self.copy_utils.copy_to_os(path_obj_from, path_to_os)
+        #self.copy_utils.copy_to_os(path_obj_from, path_to_os)
         pass
 
     def rm(self, path, clear=False):

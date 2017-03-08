@@ -1,9 +1,11 @@
-import re
-import os.path
 import os
+import os.path
+import re
+
+
 class NameConflictResolver:
     def __init__(self):
-        self.dir_listing  = None
+        self.dir_listing = None
         self.long_listing = None
         self.order_pattern = re.compile("(?P<number>\(\d +\))$")
         pass
@@ -13,7 +15,7 @@ class NameConflictResolver:
         self.long_listing = long_names
         new_name_long = self._resolve_long_name(file_name, is_directory, long_names)
         new_short_name = self._resolve_oem_name(new_name_long, short_names)
-        return new_name_long , new_short_name
+        return new_name_long, new_short_name
 
     def _resolve_long_name(self, file_name, is_directory, long_names):
         new_name = file_name
@@ -46,10 +48,11 @@ class NameConflictResolver:
         else:
             return self._write_short_name(name.encode("cp866"))
 
-    def _write_short_name(self, oem_name):
-        marker = None
-        name = None
-        extension = None
+    @staticmethod
+    def _write_short_name(oem_name):
+        # marker = None
+        # name = None
+        # extension = None
         if oem_name not in [b".", b".."]:  # default_correct_name
             marker = oem_name.split(b'.')
             marker.append(b'')
@@ -61,13 +64,14 @@ class NameConflictResolver:
             extension = b''
         return name + (b'\x20' * (11 - len(name) - len(extension))) + extension
 
-    def _is_bad_literal(self, liter):
+    @staticmethod
+    def _is_bad_literal(liter):
         unsupported_values = b'\x22\x2a\x2b\x2c\x2f\x3a\x3b\x3c\x3d\x3e\x3f\x5b\x5c\x5d\x5e\x7c'
         return liter < b'\x20' and liter != b'\x05' or liter in unsupported_values
 
     def _encode_name_to_oem_encoding(self, name):
         oem_string = b''
-        oem_liter = b''
+        # oem_liter = b''
         incorrect_translate = False
         for liter in name:
             try:
@@ -81,7 +85,8 @@ class NameConflictResolver:
             oem_string += oem_liter
         return oem_string, incorrect_translate
 
-    def _clear_name_content(self, name):
+    @staticmethod
+    def _clear_name_content(name):
         name = name.upper()
         translated_name = name.replace(' ', '')
         extension_marker = translated_name[::-1].find('.', 0)  # fixme rfind
@@ -90,7 +95,8 @@ class NameConflictResolver:
                                                                                            -extension_marker:]
         return translated_name, extension_marker
 
-    def _translate_to_short_name(self, oem_string: bytes, extension_marker):
+    @staticmethod
+    def _translate_to_short_name(oem_string: bytes, extension_marker):
         doth_position = oem_string.find(b'.', 0)
         marker = doth_position
         if doth_position == -1:
@@ -110,7 +116,8 @@ class NameConflictResolver:
     def _check_name(self, oem_name):
         return oem_name not in self.dir_listing
 
-    def _join_name(self, prefix, postfix, extension):
+    @staticmethod
+    def _join_name(prefix, postfix, extension):
         if (8 - len(prefix)) >= len(postfix):
             return prefix + postfix + b'.' + extension
         else:
@@ -126,4 +133,3 @@ class NameConflictResolver:
                 new_name = self._join_name(marker[0], added_str, marker[1])
                 if self._check_name(new_name):
                     return new_name
-

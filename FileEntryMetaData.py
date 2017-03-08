@@ -30,13 +30,14 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
     def get_attribute_dict(self):
         attributes = dict()
         attributes["read only"] = self.attr_read_only
-        attributes["hidden"] =  self.attr_hidden,
-        attributes["system"] =  self.attr_system,
+        attributes["hidden"] = self.attr_hidden,
+        attributes["system"] = self.attr_system,
         attributes["volume"] = self.attr_volume_id,
         attributes["directory"] = self.attr_directory
         attributes["archive"] = self.attr_archive
         attributes["lfn"] = self.attr_long_name
         return attributes
+
     def set_string_args(self, attr_str):
         if 'l' in attr_str:
             attr_str += 'rhsv'
@@ -117,7 +118,8 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
     def long_name(self):
         return self.attr_long_name
 
-    def __add_attr(self, attribute_string, attribute_symbol, attribute_field):
+    @staticmethod
+    def _add_attr(attribute_string, attribute_symbol, attribute_field):
         if attribute_field:
             attribute_string += attribute_symbol
         else:
@@ -126,13 +128,13 @@ class DirectoryAttributesGetter(Structures.DirectoryAttributesStructure):
 
     def get_attributes_string(self):
         attribute_string = ''
-        attribute_string = self.__add_attr(attribute_string, 'r', self.attr_read_only)
-        attribute_string = self.__add_attr(attribute_string, 'h', self.attr_hidden)
-        attribute_string = self.__add_attr(attribute_string, 's', self.attr_system)
-        attribute_string = self.__add_attr(attribute_string, 'v', self.attr_volume_id)
-        attribute_string = self.__add_attr(attribute_string, 'd', self.attr_directory)
-        attribute_string = self.__add_attr(attribute_string, 'a', self.attr_archive)
-        attribute_string = self.__add_attr(attribute_string, 'l', self.attr_long_name)
+        attribute_string = self._add_attr(attribute_string, 'r', self.attr_read_only)
+        attribute_string = self._add_attr(attribute_string, 'h', self.attr_hidden)
+        attribute_string = self._add_attr(attribute_string, 's', self.attr_system)
+        attribute_string = self._add_attr(attribute_string, 'v', self.attr_volume_id)
+        attribute_string = self._add_attr(attribute_string, 'd', self.attr_directory)
+        attribute_string = self._add_attr(attribute_string, 'a', self.attr_archive)
+        attribute_string = self._add_attr(attribute_string, 'l', self.attr_long_name)
         return attribute_string
 
 
@@ -151,7 +153,7 @@ class DateTimeGetter:
         return self._date_bytes
 
     def _init_date_time(self, date_time=None):
-        write_time = None
+        # write_time = None
         if date_time:
             write_time = date_time
         else:
@@ -216,7 +218,8 @@ class DateTimeFormat:
         self.time = datetime.time(self.hours, self.minutes, self.seconds)
         self.date = datetime.date(self.year, self.month, self.day)
 
-    def _count_data(self, from_in, to_in, where):
+    @staticmethod
+    def _count_data(from_in, to_in, where):
         step = 1
         number_summary = 0
         i = to_in
@@ -226,7 +229,8 @@ class DateTimeFormat:
             i -= 1
         return number_summary
 
-    def _shift(self, lst):
+    @staticmethod
+    def _shift(lst):
         len_lst = len(lst)
         if len_lst < 16:
             lst.reverse()

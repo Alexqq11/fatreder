@@ -1,37 +1,36 @@
 import FatReaderExceptions
 import FileDescriptor
-import FileDescriptor
-import os.path
-import re
+import FilenameConflictResolver
+
+
 class DirectoryDescriptor:
-    def __init__(self, core, file_entries_list, free_entry_place, free_entries_amount):
+    def __init__(self, core, file_entries, directory_data):
         self.core = core
         self._root_status = None
         self._self_data_cluster = None
         self._self_data_offset = None
         self._parent_data_cluster = None
         self._parent_data_offset = None
-        self.entries_list = file_entries_list
-
-       # self.conflict_name_resolver = NameConflictResolver()
-        self.files = dict()
-
-        self._writes_place = free_entry_place
-        self._free_entries_amount = free_entries_amount
-
+        self.entries_list = file_entries
+        self.conflict_name_resolver = FilenameConflictResolver.NameConflictResolver()
+        self._writes_place = None
+        self._free_entries_amount = None
+        self._drop_existing_data(directory_data)
         self._default_cluster_allocation_size = 1
         self._cluster_size = core.fat_bot_sector.cluster_size
-        self._init_files(file_entries_list)
-
         self.searching_dict = None
+        self._short_names = [entry.short_name for entry in file_entries]
+        self._long_names = [entry.name for entry in file_entries]
+        self._init_files(file_entries)
 
-        self._short_names = (entry.short_name for entry in file_entries_list)
-        self._long_names = (entry.long_name for entry in file_entries_list)
-
-    def init_files(self):
-        for x in self.entries():
-            self.files[x.long_name] = x
-            self.files[x.short_name] = x
+    def _drop_existing_data(self, directory_data):
+        self._writes_place = []
+        free_place_counter = 0
+        for data, offset, status in directory_data:
+            self._writes_place = (status, offset)
+            if status:
+                free_place_counter += 1
+        self._free_entries_amount = free_place_counter
 
     def drop_data(self):
         self.core = None
@@ -42,22 +41,22 @@ class DirectoryDescriptor:
         self._parent_data_offset = None
         self.entries_list = None
         self.searching_dict = None
-        self._short_names = None#tuple([entry.short_name for entry in file_entries_list])
-        self._long_names = None#tuple([entry.long_name for entry in file_entries_list])
-        self.files = None
-        self._writes_place = None #free_entry_place
-        self._free_entries_amount = None #free_entries_amount
+        self._short_names = None  # tuple([entry.short_name for entry in file_entries_list])
+        self._long_names = None  # tuple([entry.long_name for entry in file_entries_list])
+        self._writes_place = None  # free_entry_place
+        self._free_entries_amount = None  # free_entries_amount
         self._default_cluster_allocation_size = None
-        self._cluster_size = None #core.fat_bot_sector.cluster_size
+        self._cluster_size = None  # core.fat_bot_sector.cluster_size
 
     def _find_place_for_entry(self, amount):
         last_index = 0
         index_pool = []
         while len(index_pool) != amount:
-            index_pool , last_index = self.try_found_place_for_entry(amount, last_index)
+            index_pool, last_index = self.try_found_place_for_entry(amount, last_index)
             if len(index_pool) != amount:
                 self._extend_directory()
         return index_pool
+
     def _get_entry_place_to_flush(self, amount):
         index_pool = self._find_place_for_entry(amount)
         offsets_pool = []
@@ -69,7 +68,7 @@ class DirectoryDescriptor:
 
     def _mark_free_place(self, offsets):
         index_pool = []
-        for number ,(status, offset) in enumerate(self._writes_place):
+        for number, (status, offset) in enumerate(self._writes_place):
             if offset in offsets:
                 index_pool.append(number)
             if len(index_pool) == len(offsets):
@@ -90,7 +89,7 @@ class DirectoryDescriptor:
             else:
                 if index_pool:
                     index_pool = []
-        return index_pool , last_index
+        return index_pool, last_index
 
     def calculate_size_on_disk(self):
         size = 0
@@ -99,18 +98,18 @@ class DirectoryDescriptor:
         return size
 
     def _extend_directory(self):
-        cluster , status = self.core.fat_tripper.extend_file(self.data_cluster, self._default_cluster_allocation_size)
+        cluster, status = self.core.fat_tripper.extend_file(self.data_cluster, self._default_cluster_allocation_size)
         if not status:
             raise FatReaderExceptions.AllocationMemoryOutException
         self._note_allocated_place(cluster)
 
     def _note_allocated_place(self, cluster):
-        extended_clusters_offsets = self.core.fat_tripper.get_clusters_offsets_list
+        extended_clusters_offsets = self.core.fat_tripper.get_clusters_offsets_list(cluster)
         for offset in extended_clusters_offsets:
             self._writes_place += [(True, offset + x) for x in range(0, self._cluster_size, 32)]
         self._free_entries_amount += self._cluster_size // 32 * len(extended_clusters_offsets)
 
-    def delete(self, clear = False):
+    def delete(self, clear=False):
         for x in self.entries():
             x.delete(clear)
         self.drop_data()
@@ -119,16 +118,18 @@ class DirectoryDescriptor:
         new_file = FileDescriptor.FileDescriptor()
         new_file.set_core(self.core)
         new_file.set_parent_directory(self)
-        new_file.new_entry(*self.conflict_name_resolver.get_new_names(name, True,tuple(self._long_names), tuple(self._short_names)) ,attr="d") # TODO WRITE THIS
+        new_file.new_entry(
+            *self.conflict_name_resolver.get_new_names(name, True, tuple(self._long_names), tuple(self._short_names)),
+            attr="d")  # TODO WRITE THIS
         new_file.flush()
-        self.files[new_file.long_name] = new_file
-        self.files[new_file.short_name] = new_file
-        #self.entries_list.append(new_file)
+        self.entries_list.append(new_file)
         new_dir_data_offset = new_file.data_offset
         new_dir_data_cluster = new_file.data_cluster
+        self._short_names.append(new_file.short_name)
+        self._long_names.append(new_file.name)
         dir_self = FileDescriptor.FileDescriptor()
         dir_self.set_core(self.core)
-        dir_self.new_entry('.', [],create_long=False, data_cluster=new_dir_data_cluster ,attr="dh")
+        dir_self.new_entry('.', [], create_long=False, data_cluster=new_dir_data_cluster, attr="dh")
         dir_self._entry_offset_in_dir = [new_dir_data_offset]
         dir_self._flush()
         dir_parent = FileDescriptor.FileDescriptor()
@@ -136,38 +137,33 @@ class DirectoryDescriptor:
         dir_parent.new_entry('..', [], create_long=False, data_cluster=self.data_cluster, attr="dh")
         dir_parent._entry_offset_in_dir = [new_dir_data_offset + 32]
         dir_parent._flush()
+        return new_dir_data_cluster
 
     def make_file(self, name):
         new_file = FileDescriptor.FileDescriptor()
         new_file.set_core(self.core)
         new_file.set_parent_directory(self)
-        new_file.new_entry(*self.conflict_name_resolver.get_new_names(name, True,tuple(self._long_names), tuple(self._short_names)))
+        new_file.new_entry(
+            *self.conflict_name_resolver.get_new_names(name, True, tuple(self._long_names), tuple(self._short_names)))
         new_file.flush()
-        self.files[new_file.long_name] = new_file
-        self.files[new_file.short_name] = new_file
-        #self.entries_list.append(new_file)
-    def _accesses_descriptor(self, file_name):
-        try:
-            file_descriptor = self.files[file_name]
-        except KeyError:
-            raise  FatReaderExceptions.InvalidPathException()
-        else:
-            return file_descriptor
+        self.entries_list.append(new_file)
+        self._short_names.append(new_file.short_name)
+        self._long_names.append(new_file.name)
 
-    def rename_file(self, old_file_name, new_name):
-        file_descriptor = self.files[old_file_name]
-        self.files.pop(file_descriptor.long_name)
-        self.files.pop(file_descriptor.short_name)
-        file_descriptor.rename() # TODO REWRITE
-        #*self.conflict_name_resolver.get_new_names(name, True, tuple(self._long_names), tuple(self._short_names))
-                #.rename(new_name, self.short_names, self.long_names)
+    def rename_file(self, file_name, new_name):
+        file_descriptor = self.find(file_name, "by_name")
+        self._short_names.remove(file_descriptor.short_name)
+        self._long_names.remove(file_descriptor.name)
+        file_descriptor.rename(new_name, self._short_names, self._long_names)
+        self._short_names.append(file_descriptor.short_name)
+        self._long_names.append(file_descriptor.name)
 
     def remove_file(self, file_name):
-        file_descriptor = self.files[file_name]
-        self.files.pop(file_descriptor.long_name)
-        self.files.pop(file_descriptor.short_name)
+        file_descriptor = self.find(file_name, "by_name")
+        self._short_names.remove(file_descriptor.short_name)
+        self._long_names.remove(file_descriptor.name)
+        self.entries_list.remove(file_descriptor)
         file_descriptor.delete()
-
 
     @property
     def short_names(self):
@@ -215,12 +211,12 @@ class DirectoryDescriptor:
             self._parent_data_cluster = parent_entry.data_cluster
             self._parent_data_offset = parent_entry.data_offset
             self._root_status = False
-        elif len(file_entries_list): # can be crashed when directory have trash  it needs to check cluster!!!!
+        elif len(file_entries_list):  # can be crashed when directory have trash  it needs to check cluster!!!!
             if file_entries_list[0].attributes.volume_id:
                 self._self_data_cluster = 2
-                self._self_data_offset = file_entries_list[0].entries_offsets[0]
+                self._self_data_offset = self.core.fat_bot_sector.root_directory_offset
                 self._parent_data_cluster = 2
-                self._parent_data_offset = file_entries_list[0].entries_offsets[0]
+                self._parent_data_offset = self._self_data_offset = self.core.fat_bot_sector.root_directory_offset
                 self._root_status = True
             else:
                 # check cluster number ? it will be helpful to find type of error
@@ -240,25 +236,17 @@ class DirectoryDescriptor:
             return False, 2
 
     def directories_sources(self):
-        return filter(lambda x: x.attributes.directory, self.files.values())
+        return filter(lambda x: x.attributes.directory, self.entries_list)
 
     def files_sources(self):
-        return filter(lambda x: not x.attributes.directory, self.files.values())
+        return filter(lambda x: not x.attributes.directory, self.entries_list)
 
     def entries(self):
-        for x in self.files.values():
+        for x in self.entries_list:
             yield x
 
-    def find(self, value, key):  # todo it with func dict
+    def find(self, value, key):
         if key in self.searching_dict:
             for entry in self.entries_list:
                 if self.searching_dict[key](value, entry):
                     return entry
-
-
-
-
-
-
-
-

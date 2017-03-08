@@ -1,9 +1,6 @@
-import FileEntryCollector
-import FileReader
 import os
 import os.path
 from functools import partial
-import stat
 
 
 class OSAttributes:
@@ -18,7 +15,8 @@ class OSDirectoryReader:
     def __init__(self, cluster_size):
         self.cluster_size = cluster_size
 
-    def all_files_stream(self, path):
+    @staticmethod
+    def all_files_stream(path):
         for name in os.listdir(path):
             file_path = os.path.join(path, name)
             if not (os.path.islink(file_path) or os.path.ismount(file_path)):
@@ -36,6 +34,7 @@ class OSDirectoryReader:
             if os.path.isdir(file_path):
                 yield file_path
 
+    @staticmethod
     def file_descriptor_stream(self, path):
         file_paths = self.files_stream(path)
         for file_path in file_paths:
@@ -43,7 +42,8 @@ class OSDirectoryReader:
             yield f
             f.close()
 
-    def read_file(self, file_path):
+    @staticmethod
+    def read_file(file_path):
         f = open(file_path, "rb")
         return f
 
@@ -58,10 +58,12 @@ class OSDirectoryWriter:
     def __init__(self, cluster_size):
         self.cluster_size = cluster_size
 
-    def create_dir(self, path, mode=0o777):
+    @staticmethod
+    def create_dir(path, mode=0o777):
         os.makedirs(path, mode)
 
-    def crete_file(self, path):
+    @staticmethod
+    def crete_file(path):
         head, tail = os.path.split(path)
         os.chdir(head)
         f = open(tail, "xb")

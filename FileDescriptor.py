@@ -86,9 +86,10 @@ class FileDescriptor:
         self.parent_directory = parent_directory_descriptor
         self.parent_directory_seted = True
 
-    def new_entry_from_bytes(self, entries_data, entry_offsets_in_dir):
-        self.entries_data = entries_data  # todo think may be we need check empty list
-        self._entry_offset_in_dir = entry_offsets_in_dir
+    def new_entry_from_bytes(self, entries_data):
+        reversed(entries_data)
+        entries_data = [list(t) for t in zip(*entries_data)]
+        self.entries_data, self._entry_offset_in_dir, *_ = entries_data  # todo think may be we need check empty list
         self._short_name = self._read_short_name()
         if len(self.entries_data) > 1:
             self._long_name = self._read_long_name()
@@ -96,6 +97,7 @@ class FileDescriptor:
             self._long_name = self._short_name
         self._write_datetime = self._read_date_time()
         self._data_cluster = self._read_data_cluster()
+        self._attributes = self._read_attribute()
         pass
 
     def new_entry(self, file_name, short_short_filename, create_long=True, data_cluster=None, size=None, attr="",
@@ -131,7 +133,8 @@ class FileDescriptor:
             self.entries_data.append(
                 self._create_long_directory_entry(number, name_part, check_sum, number + 1 == len(name_parts)))
 
-    def _create_long_directory_entry(self, number, name_parts, check_sum, is_last=False):
+    @staticmethod
+    def _create_long_directory_entry(number, name_parts, check_sum, is_last=False):
         entry = struct.pack("<B", ctypes.c_ubyte(number | 0x40 if is_last else number).value)
         entry += name_parts[0]
         entry += b'\x0f\x00'
@@ -245,13 +248,13 @@ class FileDescriptor:
         size_data = struct.pack('<I', size)
         self.entries_data = self._replace_data_in_write(self.entries_data[0], size_data, *self._dir.file_size)
 
-    def to_string(self, long=False, all=False):
+    def to_string(self, long=False, all_files=False):
         file_representation = ''
-        if long and ("h" not in self.attr_string or all):
+        if long and ("h" not in self.attr_string or all_files):
             file_representation += self.date.isoformat() + ' '
             file_representation += self.time.isoformat() + '    '
             file_representation += self.attributes.get_attributes_string() + '     '
-        if "h" not in self.attr_string or all:
+        if "h" not in self.attr_string or all_files:
             file_representation += self.name
         return file_representation
 
@@ -503,7 +506,7 @@ class FileDescriptor:
     def convert_to_int(self, data, size):
         return struct.unpack(self._get_parse_mod(size), data)[0]
 
-    def _read_data(self, were, offset, length, parse=False):
+    def _read_data(self, were: bytes, offset, length, parse=False):
         if parse:
             return self.convert_to_int(were[offset: offset + length], length)
         else:

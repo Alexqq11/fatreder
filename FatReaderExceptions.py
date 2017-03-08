@@ -13,6 +13,20 @@ class FatReaderException(Exception):
     def error_message(self):
         return self._message
 
+class CoreNotInitedError(FatReaderException):
+    def __init__(self, msg=None):
+        self._message = None
+        if msg:
+            self._message = msg
+        else:
+            self._message = "This class needs to Init app core"
+        print(self._message)
+
+    pass
+
+    @property
+    def error_message(self):
+        return self._message
 
 class BadEncodingSelected(FatReaderException):
     def __init__(self, msg=None):
