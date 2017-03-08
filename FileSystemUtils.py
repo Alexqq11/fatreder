@@ -81,15 +81,15 @@ class FileSystemUtils:
     def calculate_directory_path(self):
         return self.low_level_utils.get_canonical_path(self.working_directory)
 
-    def ls(self, path_obj: FileSystemUtilsLowLevel.PathObject, long=False, all=False, recursive=False):
+    def ls(self, path_obj: FileSystemUtilsLowLevel.PathObject, long=False, all_files=False, recursive=False):
         if recursive and path_obj.is_directory:
-            yield self.get_directory_information(path_obj, long, all)
-            for dir_ in path_obj.path_descriptor.get_directories_sources():
+            yield self.get_directory_information(path_obj, long, all_files)
+            for dir_ in path_obj.path_descriptor.directories_sources():
                 if dir_.name not in [".", ".."]:
-                    yield from self.ls(self.low_level_utils.path_parser(dir_.name, path_obj.path_descriptor), long, all,
-                                       recursive)
+                    yield from self.ls(self.low_level_utils.path_parser(dir_.name, path_obj.path_descriptor),
+                                       long, all_files,recursive)
         else:
-            yield self.get_directory_information(path_obj, long, all)
+            yield self.get_directory_information(path_obj, long, all_files)
 
     def get_directory_information(self, path_obj: FileSystemUtilsLowLevel.PathObject, long=False, all=False):
         info = ''
@@ -131,14 +131,14 @@ class FatReaderUtils:
     def working_directory(self, value):
         self._working_directory = value
 
-    def ls(self, path, long=False, all=False, recursive=False):
+    def ls(self, path, long=False, all_files=False, recursive=False):
         if path == '':
             path = "./"
         self.refresh()
         path_obj = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj.is_exist and not (not path_obj.is_file and path_obj.parent_exist):
             raise InvalidPathException()
-        for data in self.file_system_utils.ls(path_obj, long, all, recursive):
+        for data in self.file_system_utils.ls(path_obj, long, all_files, recursive):
             print(data)
         pass
 

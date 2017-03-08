@@ -12,6 +12,7 @@ class DirectoryDescriptor:
         self._parent_data_cluster = None
         self._parent_data_offset = None
         self.entries_list = file_entries
+        self.activate_files_descriptors()
         self.conflict_name_resolver = FilenameConflictResolver.NameConflictResolver()
         self._writes_place = None
         self._free_entries_amount = None
@@ -22,7 +23,10 @@ class DirectoryDescriptor:
         self._short_names = [entry.short_name for entry in file_entries]
         self._long_names = [entry.name for entry in file_entries]
         self._init_files(file_entries)
-
+    def activate_files_descriptors(self):
+        for descriptor in self.entries_list:
+            descriptor.set_core(self.core)
+            descriptor.set_parent_directory(self)
     def _drop_existing_data(self, directory_data):
         self._writes_place = []
         free_place_counter = 0
@@ -224,16 +228,6 @@ class DirectoryDescriptor:
         else:
             # this can happends if we create new directory  but not create  . .. dirs
             pass
-
-    def get_file_data_cluster(self, file_name):  # todo make it more universal in future
-        entry = self.find(file_name, "by_name")
-        if entry:
-            value = entry.data_cluster
-            if value == 0:
-                value = 2
-            return True, value
-        else:  # todo reformate this
-            return False, 2
 
     def directories_sources(self):
         return filter(lambda x: x.attributes.directory, self.entries_list)

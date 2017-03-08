@@ -70,7 +70,7 @@ class DirectoryParser:
         return ((4 * 16) == (ldir_order_byte & (4 * 16))) and (((4 * 16) | number) == ldir_order_byte)
 
     def _is_correct_lfn(self, data, number):
-        ldir_order_byte, *_ = struct.unpack("<B", data[0 : 1])
+        ldir_order_byte, *_ = struct.unpack("<B", data[0:1])
         return ldir_order_byte == number or self._is_end_lfn(data, number)  # todo add hash checks
 
     def _is_dir(self, data):
@@ -78,7 +78,7 @@ class DirectoryParser:
 
     @staticmethod
     def _is_free(data):
-        first_entry_byte = data[0]
+        first_entry_byte = data[0:1]
         return first_entry_byte in [b'\xe5', b'\x00']
 
     def _is_lfn(self, data):

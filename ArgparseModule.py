@@ -35,7 +35,7 @@ class ArgsParser:
         parser_ls.add_argument(dest='path', metavar='path', nargs='?')  # * - all ? zero or one
         parser_ls.add_argument('-l', '--long', dest='long', action='store_true',
                                help='print file information in human readable format')
-        parser_ls.add_argument('-a', '--all', dest='all', action='store_true',
+        parser_ls.add_argument('-a', '--all', dest='all_files', action='store_true',
                                help='print file information for all files in directory')
         parser_ls.add_argument('-r', '--recursive', dest='recursive', action='store_true',
                                help='print file information for files in directory and subdirectories')

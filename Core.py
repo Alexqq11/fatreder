@@ -34,7 +34,7 @@ class CommandExecutor:
             self.args.path = ["./"]
         elif type(self.args.path) is not list:
             self.args.path = [self.args.path]
-        self.utils.ls(*self.args.path, long=self.args.long, all=self.args.all, recursive=self.args.recursive)
+        self.utils.ls(*self.args.path, long=self.args.long, all_files=self.args.all_files, recursive=self.args.recursive)
         pass
 
     def cp(self):
