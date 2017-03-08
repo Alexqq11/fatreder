@@ -161,6 +161,7 @@ class DirectoryDescriptor:
         file_descriptor.rename(new_name, self._short_names, self._long_names)
         self._short_names.append(file_descriptor.short_name)
         self._long_names.append(file_descriptor.name)
+        file_descriptor.flush()
 
     def remove_file(self, file_name):
         file_descriptor = self.find(file_name, "by_name")

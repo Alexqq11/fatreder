@@ -92,5 +92,10 @@ class ArgsParser:
         parser_rmdir.add_argument(dest='path', metavar='path', nargs=1)
         parser_rmdir.add_argument('-c', '--clear', dest="clear", action="store_true",
                                   help='erase data on cluster by zeros')
+        # rename
+        parser_rename = subparsers.add_parser("rename", help="rename -h, --help",
+                                              description="rename is command to rename files and directories in image")
+        parser_rename.add_argument(dest='path', metavar='path', nargs=2)
+
         self.parser = parser_program
         self.subparsers = subparsers

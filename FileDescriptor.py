@@ -135,7 +135,7 @@ class FileDescriptor:
         name_parts = self._split_name(file_name)
         for number, name_part in enumerate(name_parts):
             self.entries_data.append(
-                self._create_long_directory_entry(number, name_part, check_sum, number + 1 == len(name_parts)))
+                self._create_long_directory_entry(number + 1, name_part, check_sum, number + 1 == len(name_parts)))
 
     @staticmethod
     def _create_long_directory_entry(number, name_parts, check_sum, is_last=False):

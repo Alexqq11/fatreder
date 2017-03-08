@@ -11,7 +11,7 @@ from  FatReaderExceptions import *
 
 class CommandExecutor:
     def __init__(self, core):
-        self.commands = ("load", "ls", "cp", "cd", "md", "pwd", "cat", "rm", "move", "rmdir", "exit")
+        self.commands = ("load", "ls", "cp", "cd", "md", "pwd", "cat", "rm", "move", "rmdir", "exit", "rename")
         self.utils = core.file_system_utils
         self.core = core
         self.args = None
@@ -64,6 +64,9 @@ class CommandExecutor:
 
     def move(self):
         self.utils.move(*self.args.path)
+
+    def rename(self):
+        self.utils.rename(*self.args.path)
 
     def rmdir(self):
         self.utils.rmdir(*self.args.path, self.args.clear)

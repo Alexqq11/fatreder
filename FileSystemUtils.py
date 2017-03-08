@@ -35,7 +35,7 @@ class RemoveUtils:
         #self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable=False, clean=clear)
 
     def rename(self, path_obj: FileSystemUtilsLowLevel.PathObject, new_name):
-        path_obj.parent_descriptor.rename(path_obj.file_name, new_name)
+        path_obj.parent_descriptor.rename_file(path_obj.file_name, new_name)
         self.refresh()
 
     def refresh(self):
@@ -213,6 +213,13 @@ class FatReaderUtils:
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
         self.remove_utils.move(path_obj_from, path_obj_to)
+
+    def rename(self, path, name):
+        path_obj_from = self.low_level_utils.path_parser(path, self.working_directory)
+        path_obj_to = self.low_level_utils.path_parser(name, self.working_directory)
+        if not path_obj_from.is_exist or path_obj_to.is_exist or "/" in name or '\\' in name:
+            raise InvalidPathException()
+        self.remove_utils.rename(path_obj_from, name)
 
     def refresh(self):
         self.working_directory = self.low_level_utils.parse_directory_descriptor(self.working_directory.data_cluster)
