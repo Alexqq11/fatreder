@@ -31,7 +31,7 @@ class DirectoryDescriptor:
         self._writes_place = []
         free_place_counter = 0
         for data, offset, status in directory_data:
-            self._writes_place = (status, offset)
+            self._writes_place.append((status, offset))
             if status:
                 free_place_counter += 1
         self._free_entries_amount = free_place_counter
@@ -64,10 +64,10 @@ class DirectoryDescriptor:
     def _get_entry_place_to_flush(self, amount):
         index_pool = self._find_place_for_entry(amount)
         offsets_pool = []
-        for x in index_pool:
-            status, offset = self._writes_place[x]
+        for index , offset in index_pool:
+            status, offset = self._writes_place[index]
             offsets_pool.append(offset)
-            self._writes_place[x] = (False, offset)
+            self._writes_place[index] = (False, offset)
         return reversed(offsets_pool)
 
     def _mark_free_place(self, offsets):
@@ -133,12 +133,12 @@ class DirectoryDescriptor:
         self._long_names.append(new_file.name)
         dir_self = FileDescriptor.FileDescriptor()
         dir_self.set_core(self.core)
-        dir_self.new_entry('.', [], create_long=False, data_cluster=new_dir_data_cluster, attr="dh")
+        dir_self.new_entry('.', b'.', create_long=False, data_cluster=new_dir_data_cluster, attr="dh")
         dir_self._entry_offset_in_dir = [new_dir_data_offset]
         dir_self._flush()
         dir_parent = FileDescriptor.FileDescriptor()
         dir_parent.set_core(self.core)
-        dir_parent.new_entry('..', [], create_long=False, data_cluster=self.data_cluster, attr="dh")
+        dir_parent.new_entry('..', b'..', create_long=False, data_cluster=self.data_cluster, attr="dh")
         dir_parent._entry_offset_in_dir = [new_dir_data_offset + 32]
         dir_parent._flush()
         return new_dir_data_cluster

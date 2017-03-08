@@ -100,19 +100,23 @@ class FileDescriptor:
         self._attributes = self._read_attribute()
         pass
 
-    def new_entry(self, file_name, short_short_filename, create_long=True, data_cluster=None, size=None, attr="",
+    def new_entry(self, file_name, short_filename, create_long=True, data_cluster=None, size=None, attr="",
                   date_time=None):
-        entry = short_short_filename
+        entry = short_filename
         self._short_name = entry.decode("cp866")
         self._long_name = self._short_name
         self._attributes = self._parse_attributes(attr)
-        entry += self._attributes.attr_byte
+        entry += b' ' * (11 - len(entry))
+        #print(self._attributes.attr_byte)
+        #print(bytes(self._attributes.attr_byte))
+        entry += bytes([self._attributes.attr_byte])
         entry += b"\x00" * 8
         first_cluster_high, first_cluster_low = self._generate_address(data_cluster, size)
         entry += first_cluster_high
         write_time, write_date = self._parse_write_time(date_time)
         entry += write_time + write_date + first_cluster_low
         entry += b"\x00" * 4
+        length  = len(entry)
         self.entries_data.append(entry)
         if date_time is None:
             self._write_datetime = datetime.datetime.now()
@@ -292,9 +296,13 @@ class FileDescriptor:
         self._flush()
 
     def _flush(self):
-        if len(self.entries_data) <= len(self._entry_offset_in_dir):
+        if len(self.entries_data) == len(self._entry_offset_in_dir):
             self._write_entry_on_disk(self.entries_data,
-                                      self._entry_offset_in_dir)  # check is always offsets order correct
+                                      self._entry_offset_in_dir)
+        elif len(self.entries_data) <= len(self._entry_offset_in_dir):
+            self._write_entry_on_disk(self.entries_data,
+                                      self._entry_offset_in_dir)
+            # check is always offsets order correct
             self._free_old_offsets(self._entry_offset_in_dir[len(self.entries_data):])
             self._entry_offset_in_dir = self._entry_offset_in_dir[:len(self.entries_data)]
         else:
@@ -345,7 +353,7 @@ class FileDescriptor:
     def calculate_size_on_disk(self):
         size_in_bytes = 0
         if self.attributes.directory:
-            self._core_used("this func neeed core")
+            self._core_used()
             directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(self._data_cluster)
             size_in_bytes += len(self._get_file_allocated_clusters(self._data_cluster)) * self._cluster_size
             size_in_bytes += directory.calculate_size_on_disk()
