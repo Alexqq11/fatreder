@@ -8,7 +8,7 @@ import Core
 import FileEntryMetaData
 import ImageWorker
 import ReservedRegionReader
-
+import FilenameConflictResolver
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              os.path.pardir))
 
@@ -192,6 +192,9 @@ class FatTablesReadersTests(unittest.TestCase):
         with self.subTest("test_correct_ldir_number"):
             self.assertTrue(entry2[0:1] == b'\x04')
     """
+    def test_conflict_name_resolver(self):
+        resolver  = FilenameConflictResolver.NameConflictResolver()
+        #resolver.get_new_names("name", False,["name")
     def test_time_parsers(self):
         control_time = datetime.datetime.now()
         time_converter = FileEntryMetaData.DateTimeGetter(control_time)

@@ -1,4 +1,4 @@
-"""
+
 import os
 import os.path
 
@@ -8,7 +8,7 @@ import FileReader
 import FileSystemUtilsLowLevel
 import IOmodule
 
-
+"""
 class CopyUtils:
     def __init__(self, core, fat_reader_utils):
         self.core = core
@@ -102,6 +102,9 @@ class CopyUtils:
         else:
             self._write_copy_data_to_os(image_path_obj.path_descriptor, os_path)
 
+    def move(self, from_path_obj: FileSystemUtilsLowLevel.PathObject, to_path_obj: FileSystemUtilsLowLevel.PathObject):
+        # self.file_writer.transfer_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
+        self.refresh()
     def _write_copy_data_to_os(self, from_dir: DirectoriesStructures.Directory, os_path):
         os_files = IOmodule.OSDirectoryWriter(self.core.fat_bot_sector.cluster_size)
         for file in from_dir.get_files_sources():
@@ -110,8 +113,7 @@ class CopyUtils:
             f.close()
         for dir_ in from_dir.get_files_sources():
             dir_path = os.path.join(os_path, dir_.name)
-   #         os_files.create_dir(dir_path)
-   #         from_dir = self.low_level_utils.parse_directory_descriptor(dir_.data_cluster)
-  #        #  self._write_copy_data_to_os(from_dir, dir_path)
+            os_files.create_dir(dir_path)
+            from_dir = self.low_level_utils.parse_directory_descriptor(dir_.data_cluster)
+            self._write_copy_data_to_os(from_dir, dir_path)
 """
-""""""""""""

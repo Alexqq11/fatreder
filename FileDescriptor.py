@@ -85,11 +85,7 @@ class FileDescriptor:
     def set_parent_directory(self, parent_directory_descriptor):
         self.parent_directory = parent_directory_descriptor
         self.parent_directory_inited = True
-
-    def new_entry_from_bytes(self, entries_data):
-        entries_data = reversed(entries_data)
-        entries_data = [list(t) for t in zip(*entries_data)]
-        self.entries_data, self._entry_offset_in_dir, *_ = entries_data  # todo think may be we need check empty list
+    def _parse_entries_data(self):
         self._short_name = self._read_short_name()
         if len(self.entries_data) > 1:
             self._long_name = self._read_long_name()
@@ -98,7 +94,17 @@ class FileDescriptor:
         self._write_datetime = self._read_date_time()
         self._data_cluster = self._read_data_cluster()
         self._attributes = self._read_attribute()
+
+    def new_entry_from_bytes(self, entries_data):
+        entries_data = reversed(entries_data)
+        entries_data = [list(t) for t in zip(*entries_data)]
+        self.entries_data, self._entry_offset_in_dir, *_ = entries_data  # todo think may be we need check empty list
+        self._parse_entries_data()
         pass
+
+    def new_entry_from_descriptor(self, file_descriptor):
+        self.entries_data = file_descriptor.entries_data
+        self._parse_entries_data()
 
     def new_entry(self, file_name, short_filename, create_long=True, data_cluster=None, size=None, attr="",
                   date_time=None):
@@ -254,7 +260,7 @@ class FileDescriptor:
     def update_size_in_descriptor(self):
         size = self.calculate_size_on_disk()
         size_data = struct.pack('<I', size)
-        self.entries_data = self._replace_data_in_write(self.entries_data[0], size_data, *self._dir.file_size)
+        self.entries_data[0] = self._replace_data_in_write(self.entries_data[0], size_data, *self._dir.file_size)
 
     def to_string(self, long=False, all_files=False):
         file_representation = ''
@@ -275,7 +281,6 @@ class FileDescriptor:
        //////   DISK OPERATIONS ZONE   //////
        //////////////////////////////////////
     """
-
     def delete(self, clear_cluster=False):
         self._core_used()
         self._free_old_offsets(self._entry_offset_in_dir)
@@ -372,8 +377,12 @@ class FileDescriptor:
             start_cluster = self.extend_file(file_size, to_selected_size=False)
             file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster))
         self._core_used()
-        for data, offset in zip(data_stream, ):
+        for data, offset in zip(data_stream,self._data_offsets_stream()):
             self.core.image_reader.set_data_global(offset, data)
+    def data_stream(self):
+        self._core_used()
+        for cluster_offset in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
+            yield self.core.image_reader.get_data_global(cluster_offset, self.core.fat_bot_sector.cluster_size)
 
     def _get_file_last_cluster(self):
         self._core_used()
@@ -384,9 +393,11 @@ class FileDescriptor:
         self._core_used()
         return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-abs(number):][0]
 
-    def _data_offsets_stream(self, start_cluster_offset):
+    def _data_offsets_stream(self, start_cluster_offset = None):
         self._core_used()
         get_offset = False
+        if start_cluster_offset is None:
+            get_offset = True
         for x in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
             if x == start_cluster_offset:
                 get_offset = True

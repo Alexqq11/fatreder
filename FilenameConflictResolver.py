@@ -7,7 +7,7 @@ class NameConflictResolver:
     def __init__(self):
         self.dir_listing = None
         self.long_listing = None
-        self.order_pattern = re.compile("(?P<number>\(\d +\))$")
+        self.order_pattern = re.compile(r"(?P<number>\(\d+\))$")
         pass
 
     def get_new_names(self, file_name, is_directory, short_names, long_names):
@@ -34,7 +34,7 @@ class NameConflictResolver:
             find = find.groupdict()
             processed_part = processed_part[0:-len(find["number"])]
             number = int(find["number"][1:-1])
-            processed_part = "{0}({1})".format(processed_part, number)
+            processed_part = "{0}({1})".format(processed_part, number + 1)
         else:
             processed_part = "{0}(1)".format(processed_part)
         return "{0}{1}".format(processed_part, ext)
@@ -133,3 +133,9 @@ class NameConflictResolver:
                 new_name = self._join_name(marker[0], added_str, marker[1])
                 if self._check_name(new_name):
                     return new_name
+
+if __name__ == "__main__":
+    resolver = NameConflictResolver()
+    print(*resolver.get_new_names("name", False, ["name"],["name", "name(1)"]))
+    print(resolver._resolve_long_name("name", False, ["name", "name(1)", "name(1)(1)", "name(2)"]))
+    print(resolver._resolve_long_name("name.pro", False, ["name.pro", "name(1).pro", "name(1)(1).pro", "name(2).pro"]))

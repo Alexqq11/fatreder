@@ -96,6 +96,9 @@ class ArgsParser:
         parser_rename = subparsers.add_parser("rename", help="rename -h, --help",
                                               description="rename is command to rename files and directories in image")
         parser_rename.add_argument(dest='path', metavar='path', nargs=2)
-
+        # size
+        parser_size = subparsers.add_parser("size", help="size -h, --help",
+                                             description="size is a command to calc file size in image")
+        parser_size.add_argument(dest='path', metavar='path', nargs=1)
         self.parser = parser_program
         self.subparsers = subparsers

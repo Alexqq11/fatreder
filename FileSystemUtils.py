@@ -21,10 +21,6 @@ class RemoveUtils:
     def working_directory(self, value):
         self.fat_reader_utils.working_directory = value
 
-    def move(self, from_path_obj: FileSystemUtilsLowLevel.PathObject, to_path_obj: FileSystemUtilsLowLevel.PathObject):
-       # self.file_writer.transfer_file(to_path_obj.path_descriptor, from_path_obj.file_fs_descriptor)
-        self.refresh()
-
     def remove_file(self, path_obj: FileSystemUtilsLowLevel.PathObject, recoverable=True, clean=False):
         path_obj.path_descriptor.delete()
         ## self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable, clean)
@@ -34,10 +30,18 @@ class RemoveUtils:
         path_obj.path_descriptor.delete()
         #self.file_writer.delete_directory_or_file(path_obj.file_fs_descriptor, recoverable=False, clean=clear)
 
+    def delete(self, path_obj: FileSystemUtilsLowLevel.PathObject):
+        path_obj.file_fs_descriptor.delete()
+
     def rename(self, path_obj: FileSystemUtilsLowLevel.PathObject, new_name):
         path_obj.parent_descriptor.rename_file(path_obj.file_name, new_name)
         self.refresh()
 
+    def copy(self,path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):
+        path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor)
+
+    def move(self, path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):
+        path_obj_to.path_descriptor.move(path_obj_from.file_fs_descriptor)
     def refresh(self):
         pass
 
@@ -100,6 +104,7 @@ class FileSystemUtils:
         return self.low_level_utils.get_canonical_path(
             path_obj.path_descriptor if path_obj.is_directory else path_obj.parent_descriptor) + '\n' + info
 
+
     def cat_data(self, path_obj: FileSystemUtilsLowLevel.PathObject, byte=False, text=True, encoding="cp866"):
         addr = path_obj.path_descriptor.data_cluster
         if byte:
@@ -112,7 +117,8 @@ class FileSystemUtils:
                 except UnicodeEncodeError:
                     raise BadEncodingSelected()
 
-
+    def size(self, path_obj: FileSystemUtilsLowLevel.PathObject):
+        print(path_obj.file_fs_descriptor.calculate_size_on_disk())
 class FatReaderUtils:
     def __init__(self, core):
         self.core = core
@@ -141,13 +147,18 @@ class FatReaderUtils:
             print(data)
         pass
 
-    def cp(self, path_from, path_to):
+    def cp(self, path_from, path_to): # todo check_sub_dir
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
-        #self.copy_utils.copy_in_image(path_obj_from, path_obj_to)
+        self.remove_utils.copy(path_obj_to, path_obj_from)
         pass
+    def size(self, path):
+        path_obj_to = self.low_level_utils.path_parser(path, self.working_directory)
+        if not path_obj_to.is_exist:
+            raise InvalidPathException()
+        self.file_system_utils.size(path_obj_to)
 
     def cpf(self, path_from_os, path_to):
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
@@ -168,7 +179,7 @@ class FatReaderUtils:
             raise FileNotFoundError()
         if path_obj.is_directory:
             raise IsADirectoryError()
-        self.remove_utils.remove_file(path_obj, recoverable=True, clean=clear)
+        self.remove_utils.delete(path_obj)
         pass
 
     def rmdir(self, path, force=False, clear=False):
@@ -177,7 +188,7 @@ class FatReaderUtils:
             raise FileNotFoundError()
         if path_obj.is_file:
             raise FileExistsError()
-        self.remove_utils.remove_directory(path_obj, force=force, clear=clear)
+        self.remove_utils.delete(path_obj)
         pass
 
     def cat(self, path, byte=False, text=True, encoding="cp866"):
@@ -207,12 +218,12 @@ class FatReaderUtils:
     def pwd(self):
         print(self.file_system_utils.calculate_directory_path())
 
-    def move(self, path_from, path_to):
+    def move(self, path_to, path_from): #todo check sub_dir
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
-        self.remove_utils.move(path_obj_from, path_obj_to)
+        self.remove_utils.move(path_obj_to, path_obj_from)
 
     def rename(self, path, name):
         path_obj_from = self.low_level_utils.path_parser(path, self.working_directory)

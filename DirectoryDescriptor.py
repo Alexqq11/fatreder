@@ -7,6 +7,8 @@ class DirectoryDescriptor:
     def __init__(self, core, file_entries, directory_data):
         self.core = core
         self._root_status = None
+        self.self_descriptor = None
+        self.parent_descriptor = None
         self._self_data_cluster = None
         self._self_data_offset = None
         self._parent_data_cluster = None
@@ -23,10 +25,12 @@ class DirectoryDescriptor:
         self._short_names = [entry.short_name for entry in file_entries]
         self._long_names = [entry.name for entry in file_entries]
         self._init_files(file_entries)
+
     def activate_files_descriptors(self):
         for descriptor in self.entries_list:
             descriptor.set_core(self.core)
             descriptor.set_parent_directory(self)
+
     def _drop_existing_data(self, directory_data):
         self._writes_place = []
         free_place_counter = 0
@@ -64,11 +68,12 @@ class DirectoryDescriptor:
     def _get_entry_place_to_flush(self, amount):
         index_pool = self._find_place_for_entry(amount)
         offsets_pool = []
-        for index , offset in index_pool:
+        for index, offset in index_pool:
             status, offset = self._writes_place[index]
             offsets_pool.append(offset)
             self._writes_place[index] = (False, offset)
-        return reversed(offsets_pool)
+        offsets_pool.reverse()
+        return offsets_pool
 
     def _mark_free_place(self, offsets):
         index_pool = []
@@ -123,7 +128,7 @@ class DirectoryDescriptor:
         new_file.set_core(self.core)
         new_file.set_parent_directory(self)
         new_file.new_entry(
-            *self.conflict_name_resolver.get_new_names(name, True, tuple(self._long_names), tuple(self._short_names)),
+            *self.conflict_name_resolver.get_new_names(name, True, tuple(self._short_names), tuple(self._long_names)),
             attr="d")  # TODO WRITE THIS
         new_file.flush()
         self.entries_list.append(new_file)
@@ -148,11 +153,13 @@ class DirectoryDescriptor:
         new_file.set_core(self.core)
         new_file.set_parent_directory(self)
         new_file.new_entry(
-            *self.conflict_name_resolver.get_new_names(name, True, tuple(self._long_names), tuple(self._short_names)))
+            *self.conflict_name_resolver.get_new_names(name, False, tuple(self._short_names), tuple(self._long_names)),
+            create_long=True)
         new_file.flush()
         self.entries_list.append(new_file)
         self._short_names.append(new_file.short_name)
         self._long_names.append(new_file.name)
+        return new_file
 
     def rename_file(self, file_name, new_name):
         file_descriptor = self.find(file_name, "by_name")
@@ -169,6 +176,36 @@ class DirectoryDescriptor:
         self._long_names.remove(file_descriptor.name)
         self.entries_list.remove(file_descriptor)
         file_descriptor.delete()
+
+    def move(self, file_descriptor: FileDescriptor.FileDescriptor):
+        new_entry = FileDescriptor.FileDescriptor()
+        new_entry.set_core(self.core)
+        new_entry.set_parent_directory(self)
+        new_entry.new_entry_from_descriptor(file_descriptor)
+        new_entry.flush()
+        if new_entry.attributes.directory:
+            entry_directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(
+                file_descriptor.data_cluster)
+            parent_directory_descriptor = entry_directory.parent_descriptor
+            parent_directory_descriptor._write_data_cluster(self.data_cluster)
+            parent_directory_descriptor.flush()
+        file_descriptor._delete_file_entry_on_disk(file_descriptor._entry_offset_in_dir)  # check correct work of this
+
+    def copy(self, file_descriptor: FileDescriptor.FileDescriptor):
+        if file_descriptor.attributes.directory:
+            data_cluster = self.make_directory(file_descriptor.name)
+            to_directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(
+                data_cluster)  # not universal
+            from_directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(
+                file_descriptor.data_cluster)
+            for descriptor in from_directory.entries():
+                to_directory.copy(descriptor)
+        else:
+            descriptor = self.make_file(file_descriptor.name)
+            size = file_descriptor.calculate_size_on_disk()
+            descriptor.write_data_into_file(size, file_descriptor.data_stream())
+            descriptor.update_size_in_descriptor()
+            descriptor.flush()
 
     @property
     def short_names(self):
@@ -210,6 +247,8 @@ class DirectoryDescriptor:
         self._init_search_dict()
         self_entry = self.find(".", "by_name")
         parent_entry = self.find("..", "by_name")
+        self.self_descriptor = self_entry
+        self.parent_descriptor = parent_entry
         if self_entry and parent_entry:
             self._self_data_cluster = self_entry.data_cluster
             self._self_data_offset = self_entry.data_offset
@@ -238,7 +277,8 @@ class DirectoryDescriptor:
 
     def entries(self):
         for x in self.entries_list:
-            yield x
+            if x.name not in [".", ".."]:
+                yield x
 
     def find(self, value, key):
         if key in self.searching_dict:
