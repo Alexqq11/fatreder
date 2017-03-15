@@ -1,6 +1,5 @@
 import posixpath
 
-import CopyUtils
 import DirectoryDescriptor
 import FileReader
 import FileSystemUtilsLowLevel

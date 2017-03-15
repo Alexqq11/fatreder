@@ -1,6 +1,7 @@
 import FatReaderExceptions
 import FileDescriptor
 import FilenameConflictResolver
+import OSDescriptors
 
 
 class DirectoryDescriptor:
@@ -191,15 +192,21 @@ class DirectoryDescriptor:
             parent_directory_descriptor.flush()
         file_descriptor._delete_file_entry_on_disk(file_descriptor._entry_offset_in_dir)  # check correct work of this
 
-    def copy(self, file_descriptor: FileDescriptor.FileDescriptor):
-        if file_descriptor.attributes.directory:
-            data_cluster = self.make_directory(file_descriptor.name)
-            to_directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(
-                data_cluster)  # not universal
+    def parse_descriptors(self, file_descriptor, is_image_descriptor=False):
+        to_directory = self.make_directory(file_descriptor.name)
+        to_directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(to_directory)
+        if is_image_descriptor:
             from_directory = self.core.file_system_utils.low_level_utils.parse_directory_descriptor(
                 file_descriptor.data_cluster)
+        else:
+            from_directory = OSDescriptors.DirectoryDescriptor(file_descriptor.file_path)
+        return to_directory, from_directory
+
+    def copy(self, file_descriptor: FileDescriptor.FileDescriptor, is_image_descriptor=True):
+        if file_descriptor.attributes.directory:
+            to_directory, from_directory = self.parse_descriptors(file_descriptor, is_image_descriptor)
             for descriptor in from_directory.entries():
-                to_directory.copy(descriptor)
+                to_directory.copy(descriptor, is_image_descriptor)
         else:
             descriptor = self.make_file(file_descriptor.name)
             size = file_descriptor.calculate_size_on_disk()

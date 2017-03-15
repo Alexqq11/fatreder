@@ -368,14 +368,18 @@ class FileDescriptor:
         return size_in_bytes
 
     def write_data_into_file(self, file_size, data_stream,
-                             rewrite=True):  # todo make normal file add data with add to exist file
+                             rewrite=True, _no_extend =False ):  # todo make normal file add data with add to exist file
         file_offset_stream = None
+        start_cluster =     None
+        """
         if rewrite:
             start_cluster = self.extend_file(file_size, delete_excessive_allocation=True)
             file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster))
         else:
-            start_cluster = self.extend_file(file_size, to_selected_size=False)
-            file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster))
+            if not _no_extend:
+                start_cluster = self.extend_file(file_size, to_selected_size=False)
+            file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster)) # TODO  USE IT YEPTA
+        """
         self._core_used()
         for data, offset in zip(data_stream,self._data_offsets_stream()):
             self.core.image_reader.set_data_global(offset, data)
