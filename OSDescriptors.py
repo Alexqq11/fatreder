@@ -30,11 +30,11 @@ class FileDescriptor:  # todo think about use __slots__
     def file_path(self):
         return self._file_path
 
-    def data_stream(self):
+    def data_stream(self, chunk_size = 512):
         if not self._exist or self._directory:
             raise Exception("try to accesses not file object data")
         f = open(self._file_path, "rb")
-        data_stream = iter(partial(f.read, self._cluster_size), b'')
+        data_stream = iter(partial(f.read, chunk_size), b'')
         for data_chunk in data_stream:
             yield data_chunk
 
@@ -44,15 +44,21 @@ class FileDescriptor:  # todo think about use __slots__
             raise Exception("try to accesses not file object data")
         file = open(self._file_path, "r+b")
         for num, data_chunk in enumerate(data_stream):
-            file.seek(self._cluster_size * num)
+            file.seek(len(data_chunk) * num)
             file.write(data_chunk)
         file.close()
 
     def create_in_os(self, is_dir=False):
         if is_dir:
+            #try:
             os.makedirs(self._file_path)
+            #except:
+             #   pass
         else:
-            os.makedirs(self._parent_directory_path)
+            try:
+                os.makedirs(self._parent_directory_path)
+            except:
+                pass
             f = open(self._file_path, "xb")
             f.close()
         self._exist = True

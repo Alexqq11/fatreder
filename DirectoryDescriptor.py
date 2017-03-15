@@ -203,14 +203,14 @@ class DirectoryDescriptor:
         return to_directory, from_directory
 
     def copy(self, file_descriptor: FileDescriptor.FileDescriptor, is_image_descriptor=True):
-        if file_descriptor.attributes.directory:
+        if file_descriptor.directory:
             to_directory, from_directory = self.parse_descriptors(file_descriptor, is_image_descriptor)
             for descriptor in from_directory.entries():
                 to_directory.copy(descriptor, is_image_descriptor)
         else:
             descriptor = self.make_file(file_descriptor.name)
             size = file_descriptor.calculate_size_on_disk()
-            descriptor.write_data_into_file(size, file_descriptor.data_stream())
+            descriptor.write_data_into_file(size, file_descriptor.data_stream(self._cluster_size))
             descriptor.update_size_in_descriptor()
             descriptor.flush()
 

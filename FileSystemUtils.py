@@ -35,8 +35,11 @@ class RemoveUtils:
         path_obj.parent_descriptor.rename_file(path_obj.file_name, new_name)
         self.refresh()
 
-    def copy(self,path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):
-        path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor)
+    def copy(self,path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject,
+             is_image_descriptor=None):
+        if is_image_descriptor is None:
+            raise Exception("Working option not validated")
+        path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor, is_image_descriptor)
 
     def move(self, path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):
         path_obj_to.path_descriptor.move(path_obj_from.file_fs_descriptor)
@@ -150,7 +153,7 @@ class FatReaderUtils:
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
-        self.remove_utils.copy(path_obj_to, path_obj_from)
+        self.remove_utils.copy(path_obj_to, path_obj_from, is_image_descriptor= True)
         pass
     def size(self, path):
         path_obj_to = self.low_level_utils.path_parser(path, self.working_directory)
@@ -163,7 +166,7 @@ class FatReaderUtils:
         path_obj_from = OSDescriptors.PathObject(path_from_os)
         if path_obj_to.is_file or not path_obj_from.is_exist:
             raise InvalidPathException()
-        self.remove_utils.copy(path_obj_to, path_obj_from)
+        self.remove_utils.copy(path_obj_to, path_obj_from, is_image_descriptor = False)
         #self.copy_utils.copy_from_os(path_from_os, path_obj_to)
 
     def cpt(self, path_from, path_to_os):
@@ -173,7 +176,7 @@ class FatReaderUtils:
             raise InvalidPathException()
         if not path_obj_to.is_exist:
             path_obj_to.create()
-        self.remove_utils.copy(path_obj_to, path_obj_from)
+        self.remove_utils.copy(path_obj_to, path_obj_from, is_image_descriptor = True)
         #self.copy_utils.copy_to_os(path_obj_from, path_to_os)
         pass
 

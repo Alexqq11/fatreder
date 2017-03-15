@@ -202,6 +202,10 @@ class FileDescriptor:
         self._write_attributes()
         pass
 
+    @property
+    def directory(self):
+        return self.attributes.directory
+
     def _write_attributes(self):
         entry = self._replace_data_in_write(self.entries_data[0], self._attributes.attr_byte, *self._dir.attributes)
         self.entries_data[0] = entry
@@ -383,7 +387,7 @@ class FileDescriptor:
         self._core_used()
         for data, offset in zip(data_stream,self._data_offsets_stream()):
             self.core.image_reader.set_data_global(offset, data)
-    def data_stream(self):
+    def data_stream(self, chunk_size = 512):
         self._core_used()
         for cluster_offset in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
             yield self.core.image_reader.get_data_global(cluster_offset, self.core.fat_bot_sector.cluster_size)
