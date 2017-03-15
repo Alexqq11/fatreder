@@ -1,6 +1,5 @@
 import posixpath
-
-import DirectoryDescriptor
+import OSDescriptors
 import FileReader
 import FileSystemUtilsLowLevel
 from FatReaderExceptions import *
@@ -161,14 +160,20 @@ class FatReaderUtils:
 
     def cpf(self, path_from_os, path_to):
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
-        if path_obj_to.is_file:
+        path_obj_from = OSDescriptors.PathObject(path_from_os)
+        if path_obj_to.is_file or not path_obj_from.is_exist:
             raise InvalidPathException()
+        self.remove_utils.copy(path_obj_to, path_obj_from)
         #self.copy_utils.copy_from_os(path_from_os, path_obj_to)
 
     def cpt(self, path_from, path_to_os):
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
-        if not path_obj_from.is_exist:
+        path_obj_to = OSDescriptors.PathObject(path_to_os)
+        if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
+        if not path_obj_to.is_exist:
+            path_obj_to.create()
+        self.remove_utils.copy(path_obj_to, path_obj_from)
         #self.copy_utils.copy_to_os(path_obj_from, path_to_os)
         pass
 

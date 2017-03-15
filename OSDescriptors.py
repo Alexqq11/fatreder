@@ -128,8 +128,63 @@ class DirectoryDescriptor:
         if file_descriptor.directory:
             to_directory, from_directory = self.parse_descriptors(file_descriptor, is_image_descriptor)
             for descriptor in from_directory.entries():
-                to_directory.copy(descriptor)
+                to_directory.copy(descriptor, is_image_descriptor)
         else:
             descriptor = self.make_file(file_descriptor.name)
             size = file_descriptor.calculate_size_on_disk()
             descriptor.write_data_into_file(size, file_descriptor.data_stream())
+
+class PathObject:
+    def __init__(self, path):
+        path = os.path.normpath(path)
+        path = os.path.abspath(path)
+        self._path = path
+        self._exist = os.path.exists(path)
+        self._directory = os.path.isdir(path) if self._exist else None
+        self._file = not self._directory if self._directory is not None else None
+        self._head , self._tail = os.path.split(path)
+    def file_fs_descriptor(self):
+            return FileDescriptor(self._path)
+    @property
+    def is_exist(self):
+        return self._exist
+
+    @property
+    def is_directory(self):
+        return self._directory
+
+    @property
+    def is_file(self):
+        return self._file
+    @property
+    def path_descriptor(self):
+        return DirectoryDescriptor(self.path) if self._directory else FileDescriptor(self.path)
+    @property
+    def file_directory_path(self):
+        return self._head
+
+    @property
+    def file_name(self):
+        return self._tail
+
+    @property
+    def path(self):
+        return self._path
+
+    def create(self, is_dir=True):
+        if not self._exist:
+            if is_dir:
+                os.makedirs(self.path)
+                self._exist = True
+                self._directory = True
+                self._file = False
+            else:
+                head, tail = os.path.split(self.path)
+                os.makedirs(head)
+                f = open(tail,"xb")
+                f.close()
+                self._exist = True
+                self._directory = False
+                self._file = True
+        else:
+            raise Exception("File object already exist")
