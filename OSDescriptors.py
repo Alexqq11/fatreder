@@ -149,6 +149,8 @@ class PathObject:
         self._directory = os.path.isdir(path) if self._exist else None
         self._file = not self._directory if self._directory is not None else None
         self._head , self._tail = os.path.split(path)
+
+    @property
     def file_fs_descriptor(self):
             return FileDescriptor(self._path)
     @property
