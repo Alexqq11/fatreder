@@ -1,8 +1,7 @@
 import ctypes
 import datetime
 import struct
-
-import FatReaderExceptions
+from FatReaderExceptions import *
 import FileEntryMetaData
 import FilenameConflictResolver
 
@@ -85,6 +84,7 @@ class FileDescriptor:
     def set_parent_directory(self, parent_directory_descriptor):
         self.parent_directory = parent_directory_descriptor
         self.parent_directory_inited = True
+
     def _parse_entries_data(self):
         self._short_name = self._read_short_name()
         if len(self.entries_data) > 1:
@@ -113,8 +113,8 @@ class FileDescriptor:
         self._long_name = self._short_name
         self._attributes = self._parse_attributes(attr)
         entry += b' ' * (11 - len(entry))
-        #print(self._attributes.attr_byte)
-        #print(bytes(self._attributes.attr_byte))
+        # print(self._attributes.attr_byte)
+        # print(bytes(self._attributes.attr_byte))
         entry += bytes([self._attributes.attr_byte])
         entry += b"\x00" * 8
         first_cluster_high, first_cluster_low = self._generate_address(data_cluster, size)
@@ -122,7 +122,7 @@ class FileDescriptor:
         write_time, write_date = self._parse_write_time(date_time)
         entry += write_time + write_date + first_cluster_low
         entry += b"\x00" * 4
-        length  = len(entry)
+        length = len(entry)
         self.entries_data.append(entry)
         if date_time is None:
             self._write_datetime = datetime.datetime.now()
@@ -235,7 +235,7 @@ class FileDescriptor:
 
     def _core_used(self):
         if not self.core_inited:
-            raise FatReaderExceptions.CoreNotInitedError()
+            raise CoreNotInitedError()
 
     @property
     def data_offset(self):
@@ -285,6 +285,7 @@ class FileDescriptor:
        //////   DISK OPERATIONS ZONE   //////
        //////////////////////////////////////
     """
+
     def delete(self, clear_cluster=False):
         self._core_used()
         self._free_old_offsets(self._entry_offset_in_dir)
@@ -301,7 +302,7 @@ class FileDescriptor:
 
     def flush(self):
         if not self.parent_directory_inited:
-            raise Exception("Parent directory missing")
+            raise CoreNotInitedError("Parent directory is missing") #Exception("Parent directory missing")
         self._flush()
 
     def _flush(self):
@@ -372,9 +373,9 @@ class FileDescriptor:
         return size_in_bytes
 
     def write_data_into_file(self, file_size, data_stream,
-                             rewrite=True, _no_extend =False ):  # todo make normal file add data with add to exist file
+                             rewrite=True, _no_extend=False):  # todo make normal file add data with add to exist file
         file_offset_stream = None
-        start_cluster =     None
+        start_cluster = None
         """
         if rewrite:
             start_cluster = self.extend_file(file_size, delete_excessive_allocation=True)
@@ -385,9 +386,10 @@ class FileDescriptor:
             file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster)) # TODO  USE IT YEPTA
         """
         self._core_used()
-        for data, offset in zip(data_stream,self._data_offsets_stream()):
+        for data, offset in zip(data_stream, self._data_offsets_stream()):
             self.core.image_reader.set_data_global(offset, data)
-    def data_stream(self, chunk_size = 512):
+
+    def data_stream(self, chunk_size=512):
         self._core_used()
         for cluster_offset in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
             yield self.core.image_reader.get_data_global(cluster_offset, self.core.fat_bot_sector.cluster_size)
@@ -401,7 +403,7 @@ class FileDescriptor:
         self._core_used()
         return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-abs(number):][0]
 
-    def _data_offsets_stream(self, start_cluster_offset = None):
+    def _data_offsets_stream(self, start_cluster_offset=None):
         self._core_used()
         get_offset = False
         if start_cluster_offset is None:
@@ -424,19 +426,16 @@ class FileDescriptor:
                 self._core_used()
                 self.core.fat_tripper.set_cluster_entry(del_start_cluster)
                 return self._data_cluster
-                # to doing that we need to check how fat tripper del fat_table chain
             else:
-                raise Exception("unforeseen operation , you tryied negative file extend")
-                # raise  unforeseen operation , you tryied negative file extend
+                raise UnExpectedCriticalError("Critical error: unforeseen operation , you tries negative file extend")
                 pass
         else:
             self._core_used()
             last, status = self.core.fat_tripper.extend_file(self._data_cluster, extend_size)
             if not status:
-                raise Exception("No  memory to allocation")
+                raise AllocationMemoryOutException("No  memory to allocation")
             else:
                 return last
-                # raise here exception if allocation status equal false
 
     """
            //////////////////////////////////////
@@ -501,14 +500,14 @@ class FileDescriptor:
     def _allocate_place(self, size_in_bytes, clear_allocated_area=True):
         clusters_amount = self._count_clusters(size_in_bytes)
         if clusters_amount == 0:
-            FatReaderExceptions.ZeroSizeAllocationException()
+            raise ZeroSizeAllocationException()
         self._core_used()
         data_cluster, operation_status = self.core.fat_tripper.allocate_place(clusters_amount)
         if operation_status:
             if clear_allocated_area:
                 self._delete_data_clusters(data_cluster)
         else:
-            FatReaderExceptions.AllocationMemoryOutException()
+            raise AllocationMemoryOutException()
         return data_cluster
 
     def _parse_data_cluster(self, data_cluster):

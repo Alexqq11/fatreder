@@ -38,7 +38,7 @@ class RemoveUtils:
     def copy(self,path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject,
              is_image_descriptor=None):
         if is_image_descriptor is None:
-            raise Exception("Working option not validated")
+            raise UnExpectedCriticalError("Working option not validated")
         path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor, is_image_descriptor)
 
     def move(self, path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):
@@ -183,27 +183,27 @@ class FatReaderUtils:
     def rm(self, path, clear=False):
         path_obj = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj.is_exist:
-            raise FileNotFoundError()
+            raise InvalidPathException("file not found")
         if path_obj.is_directory:
-            raise IsADirectoryError()
+            raise InvalidPathException("Use rmdir to delete that directory")
         self.remove_utils.delete(path_obj)
         pass
 
     def rmdir(self, path, force=False, clear=False):
         path_obj = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj.is_exist:
-            raise FileNotFoundError()
+            raise InvalidPathException("file not found")
         if path_obj.is_file:
-            raise FileExistsError()
+            raise InvalidPathException("Use rm to delete that file")
         self.remove_utils.delete(path_obj)
         pass
 
     def cat(self, path, byte=False, text=True, encoding="cp866"):
         path_obj = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj.is_exist:
-            raise NotAFileException()
+            raise InvalidPathException("file not found")
         if path_obj.is_directory:
-            raise NotAFileException()
+            raise InvalidPathException("You can't read directory content by cat, use ls")
         for data in self.file_system_utils.cat_data(path_obj, byte, ):
             print(data)
         pass
@@ -211,9 +211,9 @@ class FatReaderUtils:
     def cd(self, path):
         path_obj = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj.is_exist:
-            raise NotAFileException()
+            raise InvalidPathException("directory not found")
         if path_obj.is_file:
-            raise NotAFileException()
+            raise InvalidPathException("you can't go into file, select directory")
         self.file_system_utils.change_directory(path_obj)
 
     def md(self, path):
@@ -229,14 +229,14 @@ class FatReaderUtils:
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
-            raise InvalidPathException()
+            raise InvalidPathException("You trying move not exist directory or move file/directory into existing file")
         self.remove_utils.move(path_obj_to, path_obj_from)
 
     def rename(self, path, name):
         path_obj_from = self.low_level_utils.path_parser(path, self.working_directory)
         path_obj_to = self.low_level_utils.path_parser(name, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_exist or "/" in name or '\\' in name:
-            raise InvalidPathException()
+            raise InvalidPathException("Yoy trying rename not existing object or trying to use uncorrect or existing filename ")
         self.remove_utils.rename(path_obj_from, name)
 
     def refresh(self):

@@ -9,7 +9,16 @@ import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *
 
 
-class CommandExecutor:
+class Asker:
+    def __init__(self):
+        pass
+
+    def askYesNo(self, msg=''):
+        answer = input("{}\ty/n?\n".format(msg))
+        return answer.lower() in ["y", "yes", "yep", "да", "д"]
+
+
+class CommandExecutor():
     def __init__(self, core):
         self.commands = ("load", "ls", "cp", "cd", "md", "pwd", "cat", "rm", "move", "rmdir", "exit", "rename", "size")
         self.utils = core.file_system_utils
@@ -22,7 +31,7 @@ class CommandExecutor:
             # self.NoneArgumentPath()
             operator.methodcaller(command)(self)
         else:
-            raise InvalidCommandException()
+            raise InvalidCommandException("this command wasn't registered")
 
     def load(self):
         self.core.load(*self.args.path)
@@ -34,12 +43,13 @@ class CommandExecutor:
             self.args.path = ["./"]
         elif type(self.args.path) is not list:
             self.args.path = [self.args.path]
-        self.utils.ls(*self.args.path, long=self.args.long, all_files=self.args.all_files, recursive=self.args.recursive)
+        self.utils.ls(*self.args.path, long=self.args.long, all_files=self.args.all_files,
+                      recursive=self.args.recursive)
         pass
 
     def cp(self):
         if self.args.external and self.args.internal:
-            raise InvalidCommandException()
+            raise InvalidCommandException("this arguments can't be used at the same time")
         if self.args.external:
             self.utils.cpf(*self.args.path)
         elif self.args.internal:
@@ -82,8 +92,9 @@ class CommandExecutor:
             self.args.path = []
 
 
-class Core:
+class Core(Asker):
     def __init__(self, debug=True):
+        super().__init__()
         self.image_reader = None
         self.fat_bot_sector = None
         self.fat_tripper = None
@@ -109,6 +120,7 @@ class Core:
                 print("Image not found")
         else:
             self.keep_alive = True
+            print("please, load image to continue work")
         while self.keep_alive:
             try:
                 command_prompt = input("]>")
@@ -128,13 +140,21 @@ class Core:
             self.scan_disk = not args.noscan
             if args.load:
                 self.load(args.load)
-
+            else:
+                print("please, load image to continue work")
         else:
             # args, command = None , None
             if self.keep_alive:
                 try:
                     args, command = self.args_parser.parse(self.args_parser.get_args_list(args))
-                    self.command_executor.execute(command, args)
+                    if not (self.image_loaded or command == "load"):
+                        print("please, load image to continue work")
+                    else:
+                        if command == "load":
+                            pass
+                            # ans = self.askYesNo("check image for errors")
+                            # print(ans)
+                        self.command_executor.execute(command, args)
                 except SystemExit:
                     pass
 
@@ -162,8 +182,6 @@ class Core:
 
     def close_reader(self):
         self.image_reader.close_reader()
-
-    pass
 
 
 if __name__ == "__main__":

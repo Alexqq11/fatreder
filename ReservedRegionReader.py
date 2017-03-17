@@ -1,7 +1,6 @@
 import ImageWorker
 import Structures
 
-
 class BootSectorParser(Structures.FatBootSectorStructure):
     def __init__(self, reader: ImageWorker.ImageReader, data=None):
         super().__init__()

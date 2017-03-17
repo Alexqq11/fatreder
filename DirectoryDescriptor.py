@@ -1,4 +1,4 @@
-import FatReaderExceptions
+from FatReaderExceptions import *
 import FileDescriptor
 import FilenameConflictResolver
 import OSDescriptors
@@ -110,7 +110,7 @@ class DirectoryDescriptor:
     def _extend_directory(self):
         cluster, status = self.core.fat_tripper.extend_file(self.data_cluster, self._default_cluster_allocation_size)
         if not status:
-            raise FatReaderExceptions.AllocationMemoryOutException
+            raise AllocationMemoryOutException()
         self._note_allocated_place(cluster)
 
     def _note_allocated_place(self, cluster):
@@ -271,9 +271,18 @@ class DirectoryDescriptor:
                 self._root_status = True
             else:
                 # check cluster number ? it will be helpful to find type of error
-                pass  # todo rase here something
+                raise UnExpectedParsingError("Unexpected error: check cluster number what you trying to parse,\n" +
+                                             "this directory doesn't contains parent or self directory link,\n"+
+                                             "this is not root entry or root entry with corrupted id,\n "+
+                                             "this directory contains another files descriptors\n"+
+                                             "you can try to use special util to restore this directory\n"+
+                                             "but you do at your own risk\n")
         else:
-            # this can happends if we create new directory  but not create  . .. dirs
+            raise UnExpectedParsingError("Unexpected error: check cluster number what you trying to parse,\n" +
+                                         "this directory doesn't contains parent or self directory link,\n"+
+                                         "this directory doesn't contains any files descriptors\n"+
+                                         "you can try to use special util to restore this directory\n"+
+                                         "but you do at your own risk\n")
             pass
 
     def directories_sources(self):

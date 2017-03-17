@@ -21,7 +21,6 @@ class CoreNotInitedError(FatReaderException):
         else:
             self._message = "This class needs to Init app core"
         print(self._message)
-
     pass
 
     @property
@@ -59,6 +58,32 @@ class InvalidCommandException(FatReaderException):
     def error_message(self):
         return self._message
 
+class UnExpectedParsingError(FatReaderException):
+    def __init__(self, msg=None):
+        self._message = None
+        if msg:
+            self._message = msg
+        else:
+            self._message = "Unexpected Error"
+        print(self._message)
+    pass
+
+    @property
+    def error_message(self):
+        return self._message
+class UnExpectedCriticalError(FatReaderException):
+    def __init__(self, msg=None):
+        self._message = None
+        if msg:
+            self._message = msg
+        else:
+            self._message = "Unexpected Error"
+        print(self._message)
+    pass
+
+    @property
+    def error_message(self):
+        return self._message
 
 class InvalidPathException(FatReaderException):
     def __init__(self, msg=None):
