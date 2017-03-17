@@ -2,6 +2,9 @@ import posixpath
 import OSDescriptors
 import FileReader
 import FileSystemUtilsLowLevel
+import os
+import ctypes
+
 from FatReaderExceptions import *
 
 
@@ -18,6 +21,19 @@ class RemoveUtils:
     @working_directory.setter
     def working_directory(self, value):
         self.fat_reader_utils.working_directory = value
+
+    def free_space_avalible(self,path , is_image= True):
+        if is_image:
+            return  self.core.fat_tripper.calculate_free_space()
+        else:
+            if os.name == 'nt':
+                free_bytes = ctypes.c_ulonglong(0)
+                ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(path), None, None,
+                                                           ctypes.pointer(free_bytes))
+                return free_bytes.value
+            else:
+                st = os.statvfs(path)
+                return st.f_bavail * st.f_frsize
 
     def remove_file(self, path_obj: FileSystemUtilsLowLevel.PathObject, recoverable=True, clean=False):
         path_obj.path_descriptor.delete()
@@ -39,6 +55,15 @@ class RemoveUtils:
              is_image_descriptor=None):
         if is_image_descriptor is None:
             raise UnExpectedCriticalError("Working option not validated")
+
+        size_to_copy = path_obj_from.file_fs_descriptor.calculate_size_on_disk()
+        if (is_image_descriptor):
+            free_space = self.free_space_avalible(path_obj_to.file_directory_path, is_image=False)
+        else:
+            free_space = self.free_space_avalible(path_obj_to.file_directory_path)
+        if free_space < size_to_copy:
+            raise AllocationMemoryOutException("No enough free space avalible in the cp destination place")
+        
         path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor, is_image_descriptor)
 
     def move(self, path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):

@@ -1,6 +1,6 @@
 import os
 import os.path
-
+import FilenameConflictResolver
 from functools import partial
 
 
@@ -90,6 +90,7 @@ class DirectoryDescriptor:
         self._parent_directory_path = directory
         self._name = name
         self._entries = [FileDescriptor(x) for x in self.files_paths_stream()]
+        self._names_conflict_resolver = FilenameConflictResolver.NameConflictResolver()
 
     def calculate_size_on_disk(self):
         size = 0
@@ -104,12 +105,16 @@ class DirectoryDescriptor:
                 yield file_path
 
     def make_directory(self, name):
+        name = self._names_conflict_resolver.resolve_long_name(name, False,
+                                                               [name for name in os.listdir(self._file_path)])
         new_dir = FileDescriptor(os.path.join(self._file_path, name))
         new_dir.create_in_os(is_dir=True)
         self._entries.append(new_dir)
         return new_dir
 
     def make_file(self, name):
+        name = self._names_conflict_resolver.resolve_long_name(name, False,
+                                                               [name for name in os.listdir(self._file_path)])
         new_file = FileDescriptor(os.path.join(self._file_path, name))
         new_file.create_in_os()
         self._entries.append(new_file)

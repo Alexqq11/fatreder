@@ -108,7 +108,6 @@ class Core(Asker):
         self.image_loaded = False
         if not debug:
             self.run()
-
     def run(self):
         if len(sys.argv) > 1:
             print(sys.argv)

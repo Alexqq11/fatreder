@@ -44,7 +44,17 @@ class FatTableReader:  # unsafety with out file image error checking
             self.set_cluster_entry(current_cluster)
         return status
 
-    def find_empty_entries(self, amount_of_entries,
+    def calculate_free_space(self):
+        cluster_pointer = 2
+        free_clusters_amount = 0
+        for cluster_pointer in range(2, self.max_allocation):
+            offset = self._get_fat_entry_global_offset(cluster_pointer)
+            data = self.image_reader.get_data_global(offset, self.entry_size, True)
+            if data == 0:
+                free_clusters_amount +=1
+        return free_clusters_amount * self.core.fat_bot_sector.cluster_size
+
+    def find_empty_entries(self, amount_of_entries, # TODO REFACT ALL OF THIS SHIT
                            all_space=False):  ## TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE //Full rum neded
         clusters_list = []
         start_cluster = 3
