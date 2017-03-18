@@ -328,7 +328,7 @@ class FileDescriptor:
 
     def _delete_fat_chain(self, start_cluster):
         self._core_used()
-        self.core.fat_tripper.delete_file_fat_chain(start_cluster)
+        self.core.fat_table.delete_file_fat_chain(start_cluster)
 
     def _delete_file_entry_on_disk(self, file_entries_offsets, clean=False):
         self._core_used()
@@ -340,7 +340,7 @@ class FileDescriptor:
 
     def _delete_data_clusters(self, start_cluster):
         self._core_used()
-        offsets = self.core.fat_tripper.get_file_clusters_offsets_list(start_cluster)
+        offsets = self.core.fat_table.get_file_clusters_offsets_list(start_cluster)
         zero_cluster = b'\x00' * self._cluster_size
         for offset in offsets:
             self.core.image_reader.set_data_global(offset, zero_cluster)
@@ -354,7 +354,7 @@ class FileDescriptor:
 
     def _get_file_allocated_clusters(self, cluster_number):
         self._core_used()
-        return self.core.fat_tripper.get_file_clusters_list(cluster_number)
+        return self.core.fat_table.get_file_clusters_list(cluster_number)
 
     def _get_cluster_offset(self, cluster):
         self._core_used()
@@ -391,24 +391,24 @@ class FileDescriptor:
 
     def data_stream(self, chunk_size=512):
         self._core_used()
-        for cluster_offset in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
+        for cluster_offset in self.core.fat_table.get_file_clusters_offsets_list(self._data_cluster):
             yield self.core.image_reader.get_data_global(cluster_offset, self.core.fat_bot_sector.cluster_size)
 
     def _get_file_last_cluster(self):
         self._core_used()
-        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-1:][
+        return self.core.fat_table.get_file_clusters_list(self._data_cluster)[-1:][
             0]  # maybe if it will be a stream we have a problem
 
     def _get_file_number_cluster_from_end(self, number):
         self._core_used()
-        return self.core.fat_tripper.get_file_clusters_list(self._data_cluster)[-abs(number):][0]
+        return self.core.fat_table.get_file_clusters_list(self._data_cluster)[-abs(number):][0]
 
     def _data_offsets_stream(self, start_cluster_offset=None):
         self._core_used()
         get_offset = False
         if start_cluster_offset is None:
             get_offset = True
-        for x in self.core.fat_tripper.get_file_clusters_offsets_list(self._data_cluster):
+        for x in self.core.fat_table.get_file_clusters_offsets_list(self._data_cluster):
             if x == start_cluster_offset:
                 get_offset = True
             if get_offset:
@@ -424,14 +424,14 @@ class FileDescriptor:
                 del_start_cluster = self._get_file_number_cluster_from_end(extend_size)
                 self._delete_fat_chain(del_start_cluster)
                 self._core_used()
-                self.core.fat_tripper.set_cluster_entry(del_start_cluster)
+                self.core.fat_table.set_cluster_entry(del_start_cluster)
                 return self._data_cluster
             else:
                 raise UnExpectedCriticalError("Critical error: unforeseen operation , you tries negative file extend")
                 pass
         else:
             self._core_used()
-            last, status = self.core.fat_tripper.extend_file(self._data_cluster, extend_size)
+            last, status = self.core.fat_table.extend_file(self._data_cluster, extend_size)
             if not status:
                 raise AllocationMemoryOutException("No  memory to allocation")
             else:
@@ -502,7 +502,7 @@ class FileDescriptor:
         if clusters_amount == 0:
             raise ZeroSizeAllocationException()
         self._core_used()
-        data_cluster, operation_status = self.core.fat_tripper.allocate_place(clusters_amount)
+        data_cluster, operation_status = self.core.fat_table.allocate_place(clusters_amount)
         if operation_status:
             if clear_allocated_area:
                 self._delete_data_clusters(data_cluster)

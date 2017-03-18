@@ -242,12 +242,12 @@ class FatTablesReadersTests(unittest.TestCase):
         core.init("./test.img")
 
         with self.subTest("correct_clusters_list_length"):  # may_be check content
-            file_clusters = core.fat_tripper.get_file_clusters_list(
+            file_clusters = core.fat_table.get_file_clusters_list(
                 core.file_system_utils.working_directory.entries_list[5].data_cluster)
             self.assertTrue(len(file_clusters) == 9411)
 
         with self.subTest("correct_clusters_list_content"):
-            file_clusters = core.fat_tripper.get_file_clusters_list(
+            file_clusters = core.fat_table.get_file_clusters_list(
                 core.file_system_utils.working_directory.entries_list[5].data_cluster)
             f = open("./cluster_list_content_test")
             test_list = [int(line[0:-1]) for line in f]
@@ -256,7 +256,7 @@ class FatTablesReadersTests(unittest.TestCase):
     def test_allocation_functional(self):
         core = Core.Core()
         core.init("./test.img")
-        fat_worker = core.fat_tripper
+        fat_worker = core.fat_table
 
         with self.subTest("incorrect_allocation_size"):
             empty_entry, status = fat_worker.allocate_place(31300)
@@ -277,7 +277,7 @@ class FatTablesReadersTests(unittest.TestCase):
             fat_worker.delete_file_fat_chain(empty_entry)
             is_correct = True
             for entry in lst:
-                addr = core.fat_tripper._get_fat_entry_global_offset(entry)
+                addr = core.fat_table._get_fat_entry_global_offset(entry)
                 data = core.image_reader.get_data_global(addr, 4, True)
                 is_correct = data == 0
                 if not is_correct:
@@ -287,36 +287,36 @@ class FatTablesReadersTests(unittest.TestCase):
     def test_correct_writes_functional(self):
         core = Core.Core()
         core.init("./test.img")
-        file_clusters = core.fat_tripper.get_file_clusters_list(
+        file_clusters = core.fat_table.get_file_clusters_list(
             core.file_system_utils.working_directory.entries_list[5].data_cluster)
         working_cluster = file_clusters[len(file_clusters) - 1]
-        core.fat_tripper.extend_file(working_cluster, 50)
+        core.fat_table.extend_file(working_cluster, 50)
 
         with self.subTest("check_extended_clusters_amount"):
-            file_clusters2 = core.fat_tripper.get_file_clusters_list(
+            file_clusters2 = core.fat_table.get_file_clusters_list(
                 core.file_system_utils.working_directory.entries_list[5].data_cluster)
             self.assertTrue(len(file_clusters) + 50 == len(file_clusters2))
-        core.fat_tripper.delete_file_fat_chain(working_cluster, True)
+        core.fat_table.delete_file_fat_chain(working_cluster, True)
 
         with self.subTest("check_deleted_clusters_amount"):
-            file_clusters2 = core.fat_tripper.get_file_clusters_list(
+            file_clusters2 = core.fat_table.get_file_clusters_list(
                 core.file_system_utils.working_directory.entries_list[5].data_cluster)
             self.assertTrue(len(file_clusters) == len(file_clusters2))
 
         with self.subTest("check_correct_file_state_after_operations"):
-            file_clusters2 = core.fat_tripper.get_file_clusters_list(
+            file_clusters2 = core.fat_table.get_file_clusters_list(
                 core.file_system_utils.working_directory.entries_list[5].data_cluster)
             self.assertListEqual(file_clusters, file_clusters2)
 
     def test_allocator_functional(self):
         core = Core.Core()
         core.init("./test.img")
-        empty_entries = core.fat_tripper.find_empty_entries(50)
+        empty_entries = core.fat_table.find_empty_entries(50)
 
         with self.subTest("check_is_empty_fat_entries"):
             is_correct = True
             for entry in empty_entries[0]:
-                addr = core.fat_tripper._get_fat_entry_global_offset(entry)
+                addr = core.fat_table._get_fat_entry_global_offset(entry)
                 data = core.image_reader.get_data_global(addr, 4, True)
                 is_correct = data == 0
                 if not is_correct:
@@ -326,15 +326,15 @@ class FatTablesReadersTests(unittest.TestCase):
             self.assertTrue(len(empty_entries[0]) == 50)
 
         with self.subTest("Check_break_allocation"):
-            cache = core.fat_tripper.find_empty_entries(31300)
+            cache = core.fat_table.find_empty_entries(31300)
             self.assertFalse(cache[1])
 
-        cache = core.fat_tripper.find_empty_entries(31200)
+        cache = core.fat_table.find_empty_entries(31200)
 
         with self.subTest("check_is_empty_fat_entries_big_allocate"):
             is_correct = True
             for entry in cache[0]:
-                addr = core.fat_tripper._get_fat_entry_global_offset(entry)
+                addr = core.fat_table._get_fat_entry_global_offset(entry)
                 data = core.image_reader.get_data_global(addr, 4, True)
                 is_correct = data == 0
                 if not is_correct:
@@ -342,7 +342,7 @@ class FatTablesReadersTests(unittest.TestCase):
             self.assertTrue(is_correct and cache[1])
 
         with self.subTest("Check_cant_allocate"):
-            cache = core.fat_tripper.find_empty_entries(31225)
+            cache = core.fat_table.find_empty_entries(31225)
             self.assertFalse(cache[1])  # TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE
     """
     def test_delete_primitive(self):
@@ -379,7 +379,7 @@ class FatTablesReadersTests(unittest.TestCase):
             with self.subTest("correct cleaned fat_table"):
                 is_correct = True
                 for entry in clusters:
-                    addr = core.fat_tripper._get_fat_entry_global_offset(entry)
+                    addr = core.fat_table._get_fat_entry_global_offset(entry)
                     data = core.image_reader.get_data_global(addr, 4, True)
                     is_correct = data == 0
                     if not is_correct:
@@ -391,7 +391,7 @@ class FatTablesReadersTests(unittest.TestCase):
                 core.image_reader.set_data_global(x, file_entry_data[iterr])
                 iterr += 1
             new_cls = [clusters[x] for x in range(1, len(clusters))]
-            core.fat_tripper._extend_file(new_cls, file_source.data_cluster, True)
+            core.fat_table._extend_file(new_cls, file_source.data_cluster, True)
             iterr = 0
             for cluster in clusters:
                 core.image_reader.set_data_global(core.fat_bot_sector.calc_cluster_offset(cluster),
@@ -421,10 +421,10 @@ class FatTablesReadersTests(unittest.TestCase):
 
             with self.subTest("test_cluster_correct_conversion"):
                 self.assertTrue(cls == 35385)
-            clses_before = core.fat_tripper.get_file_clusters_list(cls)
+            clses_before = core.fat_table.get_file_clusters_list(cls)
             dump_data_before = [data for data in fr.parse_non_buffer(cls)]
             fw.extend_file(cls, 2)
-            clses_after = core.fat_tripper.get_file_clusters_list(cls)
+            clses_after = core.fat_table.get_file_clusters_list(cls)
 
             with self.subTest("test_file_extended_size_correct"):
                 self.assertTrue(len(clses_before) + 1 == len(clses_after))
@@ -434,7 +434,7 @@ class FatTablesReadersTests(unittest.TestCase):
                 self.assertTrue(mini_dump[0] == b"\x00" * 512)
 
             fw.remove_excessive_allocation(clses_before[len(clses_before) - 1])
-            clses_after = core.fat_tripper.get_file_clusters_list(cls)
+            clses_after = core.fat_table.get_file_clusters_list(cls)
 
             with self.subTest("test_remove_excessive_allocation_correct"):
                 self.assertListEqual(clses_before, clses_after)

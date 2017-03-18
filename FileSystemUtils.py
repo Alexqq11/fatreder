@@ -24,7 +24,7 @@ class RemoveUtils:
 
     def free_space_avalible(self,path , is_image= True):
         if is_image:
-            return  self.core.fat_tripper.calculate_free_space()
+            return  self.core.fat_table.calculate_free_space()
         else:
             if os.name == 'nt':
                 free_bytes = ctypes.c_ulonglong(0)

@@ -19,7 +19,7 @@ class DataParser:
         self.buffer = []
 
     def _set_work_settings(self, file_cluster_number):
-        self.data_clusters_offsets_list = self.core.fat_tripper.get_file_clusters_offsets_list(file_cluster_number)
+        self.data_clusters_offsets_list = self.core.fat_table.get_file_clusters_offsets_list(file_cluster_number)
         self.cluster_size = self.core.fat_bot_sector.cluster_size
 
     def parse_non_buffer(self, file_cluster_number):
@@ -43,7 +43,7 @@ class DirectoryParser:
     def init_core(self, core):
         self._core = core
         self._reader = core.image_reader
-        self._fat_table = core.fat_tripper
+        self._fat_table = core.fat_table
         self._fat_bpd = core.fat_bot_sector
         self._core_inited = True
 

@@ -7,6 +7,7 @@ import FileSystemUtils as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *
+import ImageCheckerUtils
 
 
 class Asker:
@@ -97,7 +98,7 @@ class Core(Asker):
         super().__init__()
         self.image_reader = None
         self.fat_bot_sector = None
-        self.fat_tripper = None
+        self.fat_table = None
         self.dir_parser = None
         self.file_system_utils = None
         self.rrp = None
@@ -162,19 +163,30 @@ class Core(Asker):
 
     def _init_image(self, path):
         self.image_reader = Image.ImageReader(path)
-
-    def _init_fat_boot_sector(self):
-        self.fat_bot_sector = Rrr.BootSectorParser(self.image_reader)  # fat.FatBootSector(self.image_reader)
+        checker = ImageCheckerUtils.BootSectorChecker()
+        data = self.image_reader.get_data_global(0, 100)
+        result = checker.check(data)
+        if result != "FAT32":
+            if result == "ERROR":
+                self.image_reader.close_reader()
+                self.image_reader = None
+                raise UnExpectedCriticalError("Image reserved region corrupted or this is not FAT* image")
+            else:
+                self.image_reader.close_reader()
+                self.image_reader = None
+                raise UnExpectedCriticalError("this is not FAT32 image , other FAT types not supported")
+        else:
+            self.fat_bot_sector = Rrr.BootSectorParser(data)  # fat.FatBootSector(self.image_reader)
 
     def _init_fat_tripper(self):
-        self.fat_tripper = Ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
+        self.fat_table = Ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
 
     def init_FSW(self):
         self.file_system_utils = Fsw.FatReaderUtils(self)
 
     def init(self, path):
         self._init_image(path)
-        self._init_fat_boot_sector()
+        #self._init_fat_boot_sector()
         self._init_fat_tripper()
         self.init_FSW()
         self.image_loaded = True

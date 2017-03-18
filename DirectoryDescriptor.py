@@ -108,13 +108,13 @@ class DirectoryDescriptor:
         return size
 
     def _extend_directory(self):
-        cluster, status = self.core.fat_tripper.extend_file(self.data_cluster, self._default_cluster_allocation_size)
+        cluster, status = self.core.fat_table.extend_file(self.data_cluster, self._default_cluster_allocation_size)
         if not status:
             raise AllocationMemoryOutException()
         self._note_allocated_place(cluster)
 
     def _note_allocated_place(self, cluster):
-        extended_clusters_offsets = self.core.fat_tripper.get_clusters_offsets_list(cluster)
+        extended_clusters_offsets = self.core.fat_table.get_clusters_offsets_list(cluster)
         for offset in extended_clusters_offsets:
             self._writes_place += [(True, offset + x) for x in range(0, self._cluster_size, 32)]
         self._free_entries_amount += self._cluster_size // 32 * len(extended_clusters_offsets)

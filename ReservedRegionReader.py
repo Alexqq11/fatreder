@@ -1,16 +1,12 @@
 import ImageWorker
 import Structures
+import struct
 
 class BootSectorParser(Structures.FatBootSectorStructure):
-    def __init__(self, reader: ImageWorker.ImageReader, data=None):
+    def __init__(self, data):
         super().__init__()
-        self._data = None
-        if not data:
-            reader.set_global_offset(0)
-            self._data = reader.get_data_local(0, 90)
-        else:
-            self._data = data  # check data ?
-        self.reader = reader
+        self.data_offset = Structures.BootSectorOffsets()
+        self._data = data  # check data ?
         self.bs_jmp_boot = self.get_data(0, 3)  # 0 3
         self.bs_oem_name = self.get_data(3, 8)  # 3 8
         self.bpb_bytes_per_sector = self.get_data(11, 2, True)  # 11 2
@@ -47,11 +43,26 @@ class BootSectorParser(Structures.FatBootSectorStructure):
         self._fat_offsets_list = self._fat_offsets_list()
         self._data_clusters_amount = self._calc_data_clusters()
 
-    def get_data(self, start, size, parse_int=False):
-        data = self._data[start: start + size]
-        if parse_int:
-            data = self.reader.convert_to_int(data, size)
-        return data
+    @staticmethod
+    def _get_parse_mod(size):
+        mod_parameter = ''
+        if size == 1:
+            mod_parameter = '<B'
+        elif size == 2:
+            mod_parameter = '<H'
+        elif size == 4:
+            mod_parameter = '<I'
+        return mod_parameter
+
+    def convert_to_int(self, data, size):
+        value, *trash = struct.unpack(self._get_parse_mod(size), data)
+        return value
+
+    def get_data(self, offset, length, parse = False):
+        if parse:
+            return self.convert_to_int(self._data[offset: offset + length], length)
+        else:
+            return self._data[offset: offset + length]
 
     def _calc_data_clusters(self):
         data_sectors = self.bpb_total_sectors_32 - (self.root_directory_offset // self.bpb_bytes_per_sector)

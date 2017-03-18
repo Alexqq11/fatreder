@@ -15,32 +15,6 @@ class ShortDirectoryEntryStructure:
         self.entry_size = 32  # if fat 32
 
 
-class FileEntryStructure:
-    def __init(self):
-        self._long_name = None
-        self._short_name = None
-        self._attributes = None
-        self._write_date = None
-        self._write_time = None
-        self._write_datetime = None
-        self._data_offset = None
-        self._data_cluster = None
-        self._entries_offsets = None
-
-
-class LongDirectoryEntryStructure:
-    def __init__(self):
-        self.ldir_order = None  # 0 1
-        self.ldir_name1 = None  # 1 10
-        self.ldir_attribute = None  # 11 1
-        self.ldir_type = None  # 12 1
-        self.ldir_check_sum = None  # 13 1
-        self.ldir_name2 = None  # 14 12
-        self.ldir_first_cluster_low = None  # 26 2 must be zero
-        self.ldir_name3 = None  # 28 4
-        self.entry_size = 32  # for fat 32
-
-
 class FSInfoStructure:
     def __init__(self):
         self.fsi_lead_signature = None  # 0 4
@@ -83,6 +57,36 @@ class FatBootSectorStructure:
         self.bs_volume_label = None  # 71 11
         self.bs_file_system_type = None  # 82 8
 
+class BootSectorOffsets(FatBootSectorStructure):
+    def __init__(self):
+        super().__init__()
+        self.bs_jmp_boot = (0, 3, False)  # 0 3
+        self.bs_oem_name = (3, 8, False)  # 3 8
+        self.bpb_bytes_per_sector = (11, 2, True)  # 11 2
+        self.bpb_sectors_per_cluster = (13, 1, True)  # 13 1
+        self.bpb_reserved_region_sectors_count = (14, 2, True)  # 14 2
+        self.bpb_number_fats = (16, 1, True)  # 16 1
+        self.bpb_root_entry_count = (17, 2, True)  # 17 2 for fat32 it zero
+        self.bpb_total_sectors_16 = (19, 2, True)  # 19 2 old field in fat 32 must be zero
+        self.bpb_media = (21, 1, False)  # 21 1 stand
+        self.bpb_fat_size_16 = (22, 2, True)  # 22 2
+        self.bpb_sectors_per_track = (24, 2, True)  # 24 2
+        self.bpb_number_heads = (26, 2, True)  # 26 2 amount of disk heads
+        self.bpb_hidden_sectors = (28, 4, True)  # 28 4
+        self.bpb_total_sectors_32 = (32, 4, True)  # 32 4 new 32 bit field sm old 16 bit field
+        self.bpb_fat_size_32 = (36, 4, True)  # 36 4 amount of sectors one fat
+        self.bpb_ext_flags = (40, 2, False)  # 40 2
+        self.file_system_version = (42, 2)  # 42 2
+        self.bpb_root_cluster = (44, 4, True)  # 44 4
+        self.bpb_file_system_information = (48, 2, True)  # 48 2
+        self.bpb_backup_boot_sector = (50, 2, True)  # 50 2
+        self.bpb_reserved = (52, 12, False)  # 52 12
+        self.bs_driver_number = (64, 1, False)  # 64 1
+        self.bs_reserved1 = (65, 1, False)  # 65 1
+        self.bs_boot_signature = (66, 1, False)  # 66 1
+        self.bs_volume_id = (67, 4, False)  # 67 4
+        self.bs_volume_label = (71, 11, False)  # 71 11
+        self.bs_file_system_type = (82, 8, False)  # 82 8
 
 class DirectoryAttributesStructure:
     def __init__(self):
