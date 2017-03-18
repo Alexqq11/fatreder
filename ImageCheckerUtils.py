@@ -1,5 +1,5 @@
 import struct
-
+import Core
 import Structures
 
 
@@ -151,9 +151,6 @@ class BootSectorChecker:
             return "FAT12/16"
         else:
             return "UNDEFINED"
-
-class FatTableChecker:
-    pass
 
 
 class FilesAllocationChecker:

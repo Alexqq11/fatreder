@@ -21,7 +21,7 @@ class DirectoryDescriptor:
         self._free_entries_amount = None
         self._drop_existing_data(directory_data)
         self._default_cluster_allocation_size = 1
-        self._cluster_size = core.fat_bot_sector.cluster_size
+        self._cluster_size = core.fat_boot_sector.cluster_size
         self.searching_dict = None
         self._short_names = [entry.short_name for entry in file_entries]
         self._long_names = [entry.name for entry in file_entries]
@@ -55,7 +55,7 @@ class DirectoryDescriptor:
         self._writes_place = None  # free_entry_place
         self._free_entries_amount = None  # free_entries_amount
         self._default_cluster_allocation_size = None
-        self._cluster_size = None  # core.fat_bot_sector.cluster_size
+        self._cluster_size = None  # core.fat_boot_sector.cluster_size
 
     def _find_place_for_entry(self, amount):
         last_index = 0
@@ -265,9 +265,9 @@ class DirectoryDescriptor:
         elif len(file_entries_list):  # can be crashed when directory have trash  it needs to check cluster!!!!
             if file_entries_list[0].attributes.volume_id:
                 self._self_data_cluster = 2
-                self._self_data_offset = self.core.fat_bot_sector.root_directory_offset
+                self._self_data_offset = self.core.fat_boot_sector.root_directory_offset
                 self._parent_data_cluster = 2
-                self._parent_data_offset = self._self_data_offset = self.core.fat_bot_sector.root_directory_offset
+                self._parent_data_offset = self._self_data_offset = self.core.fat_boot_sector.root_directory_offset
                 self._root_status = True
             else:
                 # check cluster number ? it will be helpful to find type of error

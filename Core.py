@@ -2,21 +2,16 @@ import operator
 import sys
 
 import ArgparseModule
-import FatTableReader as Ftw
+#import FatTableReader as Ftw
 import FileSystemUtils as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *
 import ImageCheckerUtils
+import FatTableIncaps as Ftw
+import Structures
 
 
-class Asker:
-    def __init__(self):
-        pass
-
-    def askYesNo(self, msg=''):
-        answer = input("{}\ty/n?\n".format(msg))
-        return answer.lower() in ["y", "yes", "yep", "да", "д"]
 
 
 class CommandExecutor():
@@ -93,11 +88,11 @@ class CommandExecutor():
             self.args.path = []
 
 
-class Core(Asker):
+class Core(Structures.Asker):
     def __init__(self, debug=True):
         super().__init__()
         self.image_reader = None
-        self.fat_bot_sector = None
+        self.fat_boot_sector = None
         self.fat_table = None
         self.dir_parser = None
         self.file_system_utils = None
@@ -176,10 +171,10 @@ class Core(Asker):
                 self.image_reader = None
                 raise UnExpectedCriticalError("this is not FAT32 image , other FAT types not supported")
         else:
-            self.fat_bot_sector = Rrr.BootSectorParser(data)  # fat.FatBootSector(self.image_reader)
+            self.fat_boot_sector = Rrr.BootSectorParser(data)  # fat.FatBootSector(self.image_reader)
 
     def _init_fat_tripper(self):
-        self.fat_table = Ftw.FatTableReader(self, self.fat_bot_sector.fat_offsets_list)
+        self.fat_table = Ftw.FatTablesManager(self, self.fat_boot_sector.fat_offsets_list)
 
     def init_FSW(self):
         self.file_system_utils = Fsw.FatReaderUtils(self)

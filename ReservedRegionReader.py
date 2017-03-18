@@ -22,7 +22,7 @@ class BootSectorParser(Structures.FatBootSectorStructure):
         self.bpb_hidden_sectors = self.get_data(28, 4, True)  # 28 4
         self.bpb_total_sectors_32 = self.get_data(32, 4, True)  # 32 4 new 32 bit field sm old 16 bit field
         self.bpb_fat_size_32 = self.get_data(36, 4, True)  # 36 4 amount of sectors one fat
-        self.bpb_ext_flags = self.get_data(40, 2)  # 40 2
+        self.bpb_ext_flags = self.get_data(40, 2, True)  # 40 2
         self.file_system_version = self.get_data(42, 2)  # 42 2
         self.bpb_root_cluster = self.get_data(44, 4, True)  # 44 4
         self.bpb_file_system_information = self.get_data(48, 2, True)  # 48 2
@@ -42,6 +42,9 @@ class BootSectorParser(Structures.FatBootSectorStructure):
         self._fat_size = (self.root_directory_offset - self.fat_zone_offset) // self.bpb_number_fats
         self._fat_offsets_list = self._fat_offsets_list()
         self._data_clusters_amount = self._calc_data_clusters()
+        self._mirroring = None
+        self._active_fat = None
+        self._parse_ext_flags()
 
     @staticmethod
     def _get_parse_mod(size):
@@ -53,6 +56,10 @@ class BootSectorParser(Structures.FatBootSectorStructure):
         elif size == 4:
             mod_parameter = '<I'
         return mod_parameter
+
+    @property
+    def active_fat(self):
+        return  self._active_fat , self._mirroring
 
     def convert_to_int(self, data, size):
         value, *trash = struct.unpack(self._get_parse_mod(size), data)
@@ -74,6 +81,19 @@ class BootSectorParser(Structures.FatBootSectorStructure):
             current_sector = self.bpb_reserved_region_sectors_count + self.bpb_fat_size_32 * fat_number
             fats_offsets.append(current_sector * self.bpb_bytes_per_sector)
         return tuple(fats_offsets)
+
+    def _parse_ext_flags(self):
+        data = bin(self.bpb_ext_flags)[2:]
+        data = '0' * (16 - len(data)) + data
+        fat_number = int(data[-4:],2)
+        reserved = int(data[-7:-4],2)
+        mirroring = int(data[-8:-7],2)
+        if mirroring == 0:
+            self._mirroring = True
+        else:
+            self._mirroring = False
+        self._active_fat = fat_number
+
 
     @property
     def data_clusters_amount(self):

@@ -78,7 +78,7 @@ class FileDescriptor:
 
     def set_core(self, core):
         self.core = core
-        self._cluster_size = core.fat_bot_sector.cluster_size
+        self._cluster_size = core.fat_boot_sector.cluster_size
         self.core_inited = True
 
     def set_parent_directory(self, parent_directory_descriptor):
@@ -240,7 +240,7 @@ class FileDescriptor:
     @property
     def data_offset(self):
         self._core_used()
-        return self.core.fat_bot_sector.calc_cluster_offset(self._data_cluster)
+        return self.core.fat_boot_sector.calc_cluster_offset(self._data_cluster)
 
     @property
     def data_cluster(self):
@@ -358,7 +358,7 @@ class FileDescriptor:
 
     def _get_cluster_offset(self, cluster):
         self._core_used()
-        return self.core.fat_bot_sector.calc_cluster_offset(cluster)
+        return self.core.fat_boot_sector.calc_cluster_offset(cluster)
 
     def calculate_size_on_disk(self):
         size_in_bytes = 0
@@ -392,7 +392,7 @@ class FileDescriptor:
     def data_stream(self, chunk_size=512):
         self._core_used()
         for cluster_offset in self.core.fat_table.get_file_clusters_offsets_list(self._data_cluster):
-            yield self.core.image_reader.get_data_global(cluster_offset, self.core.fat_bot_sector.cluster_size)
+            yield self.core.image_reader.get_data_global(cluster_offset, self.core.fat_boot_sector.cluster_size)
 
     def _get_file_last_cluster(self):
         self._core_used()

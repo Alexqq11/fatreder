@@ -57,6 +57,7 @@ class FatBootSectorStructure:
         self.bs_volume_label = None  # 71 11
         self.bs_file_system_type = None  # 82 8
 
+
 class BootSectorOffsets(FatBootSectorStructure):
     def __init__(self):
         super().__init__()
@@ -88,6 +89,7 @@ class BootSectorOffsets(FatBootSectorStructure):
         self.bs_volume_label = (71, 11, False)  # 71 11
         self.bs_file_system_type = (82, 8, False)  # 82 8
 
+
 class DirectoryAttributesStructure:
     def __init__(self):
         self.attr_read_only = None
@@ -97,3 +99,22 @@ class DirectoryAttributesStructure:
         self.attr_directory = None
         self.attr_archive = None
         self.attr_long_name = None
+
+
+class Asker:
+    def __init__(self):
+        pass
+
+    def ask_yes_no(self, msg=''):
+        answer = input("{}\ty/n?\n".format(msg))
+        return answer.lower() in ["y", "yes", "yep", "да", "д"]
+
+    def ask_choice_list(self, msg, choices):
+        print(msg)
+        print(*choices, sep='\n')
+        while True:
+            answer = input("select {}..{} topics\n".format(0, len(choices) - 1))
+            if int(answer) in list(range(0, len(choices))):
+                return answer
+            else:
+                print("invalid choice string")

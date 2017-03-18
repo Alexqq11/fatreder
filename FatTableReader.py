@@ -10,8 +10,8 @@ class FatTableReader:  # unsafety with out file image error checking
         self.current_fat_offset = fat_offsets[self.current_fat_index]
         self.entry_size = 4
         self.last_empty_entry = 3
-        self.fat_size = core.fat_bot_sector.fat_size
-        self.max_allocation = core.fat_bot_sector.max_allocation
+        self.fat_size = core.fat_boot_sector.fat_size
+        self.max_allocation = core.fat_boot_sector.max_allocation
         self.write_protection = False
 
     def set_cluster_entry(self, current_cluster, next_cluster=268435448):  ## not safety
@@ -52,7 +52,7 @@ class FatTableReader:  # unsafety with out file image error checking
             data = self.image_reader.get_data_global(offset, self.entry_size, True)
             if data == 0:
                 free_clusters_amount +=1
-        return free_clusters_amount * self.core.fat_bot_sector.cluster_size
+        return free_clusters_amount * self.core.fat_boot_sector.cluster_size
 
     def find_empty_entries(self, amount_of_entries, # TODO REFACT ALL OF THIS SHIT
                            all_space=False):  ## TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE //Full rum neded
@@ -87,7 +87,7 @@ class FatTableReader:  # unsafety with out file image error checking
         return self._get_fat_entry_local_offset(fat_entry) + self.current_fat_offset
 
     def get_file_clusters_offsets_list(self, fat_entry):
-        return [self.core.fat_bot_sector.calc_cluster_offset(cls) for cls in self.get_file_clusters_list(fat_entry)]
+        return [self.core.fat_boot_sector.calc_cluster_offset(cls) for cls in self.get_file_clusters_list(fat_entry)]
 
     def delete_file_fat_chain(self, file_cluster, set_end=False):
         entries = self.get_file_clusters_list(file_cluster)

@@ -92,7 +92,7 @@ class FileSystemUtilsLowLevel:
         # self.file_writer = FileWriter.FileWriter(core)
 
     def calc_cluster_offset(self, cluster_number):
-        return self.core.fat_bot_sector.calc_cluster_offset(cluster_number)
+        return self.core.fat_boot_sector.calc_cluster_offset(cluster_number)
 
     def parse_directory_descriptor(self, data_cluster):
         return self.directory_reader.parse_at_cluster(data_cluster)
@@ -100,7 +100,7 @@ class FileSystemUtilsLowLevel:
     def get_directory_descriptor(self, path, working_directory):
         path = posixpath.normpath(path)
         if path == '/':
-            return self.parse_directory_descriptor(self.core.fat_bot_sector.root_directory_cluster), True, 0
+            return self.parse_directory_descriptor(self.core.fat_boot_sector.root_directory_cluster), True, 0
         path_parts = path.split('/')
         intermediate_directory = None
         operation_status = True
@@ -108,7 +108,7 @@ class FileSystemUtilsLowLevel:
         for num, way_elem in enumerate(path_parts):
             track_num = num
             if way_elem == '' and intermediate_directory is None:
-                intermediate_directory = self.parse_directory_descriptor(self.core.fat_bot_sector.root_directory_cluster)
+                intermediate_directory = self.parse_directory_descriptor(self.core.fat_boot_sector.root_directory_cluster)
             elif not (way_elem == '.' or (way_elem == '..' and (
                     intermediate_directory.is_root if intermediate_directory else working_directory.is_root))):
                 if intermediate_directory is None:
@@ -150,7 +150,7 @@ class FileSystemUtilsLowLevel:
             path_exist = True
             tail_file_descriptor = directory
             head, tail = posixpath.split(canonical_path)
-            head_file_descriptor, _, _ = self.get_directory_descriptor(head, self.parse_directory_descriptor(self.core.fat_bot_sector.root_directory_cluster))
+            head_file_descriptor, _, _ = self.get_directory_descriptor(head, self.parse_directory_descriptor(self.core.fat_boot_sector.root_directory_cluster))
         else:
             head, tail = posixpath.split(path)
             directory, parent_directory_exist, _ = self.get_directory_descriptor(head, working_directory)

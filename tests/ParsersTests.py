@@ -394,7 +394,7 @@ class FatTablesReadersTests(unittest.TestCase):
             core.fat_table._extend_file(new_cls, file_source.data_cluster, True)
             iterr = 0
             for cluster in clusters:
-                core.image_reader.set_data_global(core.fat_bot_sector.calc_cluster_offset(cluster),
+                core.image_reader.set_data_global(core.fat_boot_sector.calc_cluster_offset(cluster),
                                                   data_dump[iterr])
                 iterr += 1
     """
@@ -417,7 +417,7 @@ class FatTablesReadersTests(unittest.TestCase):
             self.assertFalse(status)
 
         with self.subTest("test_allocation_operation_test"):
-            cls = core.fat_bot_sector.calc_cluster_number(22310400)
+            cls = core.fat_boot_sector.calc_cluster_number(22310400)
 
             with self.subTest("test_cluster_correct_conversion"):
                 self.assertTrue(cls == 35385)
@@ -451,7 +451,7 @@ class FatTablesReadersTests(unittest.TestCase):
 
             iter = 0
             for cluster in clses_before:
-                core.image_reader.set_data_global(core.fat_bot_sector.calc_cluster_offset(cluster),
+                core.image_reader.set_data_global(core.fat_boot_sector.calc_cluster_offset(cluster),
                                                   dump_data_before[iter])
                 iter += 1
     """
