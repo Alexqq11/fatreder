@@ -149,7 +149,7 @@ class FatReaderUtils:
     def __init__(self, core):
         self.core = core
         self.low_level_utils = FileSystemUtilsLowLevel.FileSystemUtilsLowLevel(core)
-        self._working_directory = self.low_level_utils.parse_directory_descriptor(2)
+        self._working_directory = self.low_level_utils.parse_directory_descriptor(self.core.fat_bot_sector.root_directory_cluster)
         self.file_system_utils = FileSystemUtils(core, self)
         self.remove_utils = RemoveUtils(core, self)
         #self.copy_utils = CopyUtils.CopyUtils(core, self)

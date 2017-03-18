@@ -94,6 +94,10 @@ class BootSectorChecker:
                 fat_type = "ERROR"
         else:
             fat_type = "ERROR"
+        if fat_type == "FAT32":
+            checked_field = self.read(data, *self.data_offsets.bpb_root_cluster)
+            if checked_field < 2:
+                fat_type = "ERROR"
         return fat_type
 
     def detect_fat_type(self, data):
