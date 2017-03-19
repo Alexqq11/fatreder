@@ -19,6 +19,12 @@ class FatTablesManager(Structures.Asker):
             self._fats = [FatTable(core, offset) for offset in self._fats_offsets]
             self.check_fats()
 
+    def set_mapped_for_chain(self, cluster):
+        self._main_fat.set_mapped_for_chain(cluster)
+
+    def clear_fat_trash(self):
+        self._main_fat.clear_fat_trash()
+
     def get_next(self, cluster):
         return self._main_fat[cluster] if self._main_fat[cluster] < 268435448 else cluster
 
@@ -91,6 +97,26 @@ class FatTable:
             data = core.image_reader.get_data_global(offset, core.fat_boot_sector.fat_size)
         self._max_allocation = min(core.fat_boot_sector.max_allocation, len(data) // 4)
         self._byte_data = [data[x:x + 4] for x in range(0, self._max_allocation * 4, 4)]
+        self._mapped_memory = None
+
+    def _init_mapped(self):
+        self._mapped_memory = [False for x in range(len(self._byte_data))]
+        self._mapped_memory[0] = True
+        self._mapped_memory[1] = True
+
+    def set_mapped_for_chain(self, data_cluster):
+        if self._mapped_memory is None:
+            self._init_mapped()
+        for cluster_number in self.file_clusters_stream(data_cluster):
+            self._mapped_memory[cluster_number] = True
+
+    def clear_fat_trash(self):
+        for cluster_number , mapped_status in enumerate(self._mapped_memory):
+            if not mapped_status and cluster_number > 1:
+                self[cluster_number] = 0
+        self._del_mapped()
+    def _del_mapped(self):
+        self._mapped_memory = []
 
     def _get_fat_entry_global_offset(self, cluster):
         return cluster * 4 + self._offset
