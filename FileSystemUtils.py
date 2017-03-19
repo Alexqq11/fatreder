@@ -145,6 +145,7 @@ class FileSystemUtils:
 
     def size(self, path_obj: FileSystemUtilsLowLevel.PathObject):
         print(path_obj.file_fs_descriptor.calculate_size_on_disk())
+
 class FatReaderUtils:
     def __init__(self, core):
         self.core = core

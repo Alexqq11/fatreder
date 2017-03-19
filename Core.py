@@ -8,7 +8,7 @@ import ImageWorker as Image
 import ReservedRegionReader as Rrr
 from  FatReaderExceptions import *
 import ImageCheckerUtils
-import FatTableIncaps as Ftw
+import FatTableReader as Ftw
 import Structures
 
 
@@ -94,7 +94,7 @@ class Core(Structures.Asker):
         self.image_reader = None
         self.fat_boot_sector = None
         self.fat_table = None
-        self.dir_parser = None
+        #self.dir_parser = None
         self.file_system_utils = None
         self.rrp = None
         self.args_parser = ArgparseModule.ArgsParser()
@@ -158,7 +158,7 @@ class Core(Structures.Asker):
 
     def _init_image(self, path):
         self.image_reader = Image.ImageReader(path)
-        checker = ImageCheckerUtils.BootSectorChecker()
+        checker = Rrr.BootSectorChecker()
         data = self.image_reader.get_data_global(0, 100)
         result = checker.check(data)
         if result != "FAT32":
@@ -174,7 +174,7 @@ class Core(Structures.Asker):
             self.fat_boot_sector = Rrr.BootSectorParser(data)  # fat.FatBootSector(self.image_reader)
 
     def _init_fat_tripper(self):
-        self.fat_table = Ftw.FatTablesManager(self, False)
+        self.fat_table = Ftw.FatTablesManager(self)
 
     def init_FSW(self):
         self.file_system_utils = Fsw.FatReaderUtils(self)
