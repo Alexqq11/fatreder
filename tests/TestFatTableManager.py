@@ -3,7 +3,7 @@ import sys
 import unittest
 
 import Core
-from  FatReaderExceptions import *
+from FatReaderExceptions import *
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              os.path.pardir))
@@ -49,7 +49,7 @@ class FatTableTests(unittest.TestCase):
 
         with self.subTest("check_correct_allocation_size"):
             lst = fat_worker.get_file_clusters_list(empty_entry)
-            print(len(lst) , "   ", 200)
+            print(len(lst), "   ", 200)
             self.assertTrue(len(lst) == allocate_number)
 
         with self.subTest("check_erase_allocation"):
@@ -108,8 +108,8 @@ class FatTableTests(unittest.TestCase):
 
         with self.subTest("Check break allocation"):
             with self.assertRaises(AllocationMemoryOutException):
-                cache = core.fat_table.find_empty_entries(31300)
-            #self.assertFalse(cache[1])
+                core.fat_table.find_empty_entries(31300)
+                # self.assertFalse(cache[1])
 
         cache = core.fat_table.find_empty_entries(31000)
 
@@ -125,5 +125,5 @@ class FatTableTests(unittest.TestCase):
 
         with self.subTest("Check cant allocate"):
             with self.assertRaises(AllocationMemoryOutException):
-                cache = core.fat_table.find_empty_entries(31225)
-            #self.assertFalse(cache[1])  # TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE
+                core.fat_table.find_empty_entries(31225)
+                # self.assertFalse(cache[1])  # TODO MAKE SIZE CHEKER FOR ALLOCATING DISK SPACE

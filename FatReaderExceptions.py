@@ -13,6 +13,7 @@ class FatReaderException(Exception):
     def error_message(self):
         return self._message
 
+
 class CoreNotInitedError(FatReaderException):
     def __init__(self, msg=None):
         self._message = None
@@ -21,11 +22,13 @@ class CoreNotInitedError(FatReaderException):
         else:
             self._message = "This class needs to Init app core"
         print(self._message)
+
     pass
 
     @property
     def error_message(self):
         return self._message
+
 
 class BadEncodingSelected(FatReaderException):
     def __init__(self, msg=None):
@@ -58,6 +61,7 @@ class InvalidCommandException(FatReaderException):
     def error_message(self):
         return self._message
 
+
 class UnExpectedParsingError(FatReaderException):
     def __init__(self, msg=None):
         self._message = None
@@ -66,11 +70,14 @@ class UnExpectedParsingError(FatReaderException):
         else:
             self._message = "Unexpected Error"
         print(self._message)
+
     pass
 
     @property
     def error_message(self):
         return self._message
+
+
 class UnExpectedCriticalError(FatReaderException):
     def __init__(self, msg=None):
         self._message = None
@@ -79,11 +86,13 @@ class UnExpectedCriticalError(FatReaderException):
         else:
             self._message = "Unexpected Error"
         print(self._message)
+
     pass
 
     @property
     def error_message(self):
         return self._message
+
 
 class InvalidPathException(FatReaderException):
     def __init__(self, msg=None):

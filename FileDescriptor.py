@@ -122,7 +122,6 @@ class FileDescriptor:
         write_time, write_date = self._parse_write_time(date_time)
         entry += write_time + write_date + first_cluster_low
         entry += b"\x00" * 4
-        length = len(entry)
         self.entries_data.append(entry)
         if date_time is None:
             self._write_datetime = datetime.datetime.now()
@@ -302,7 +301,7 @@ class FileDescriptor:
 
     def flush(self):
         if not self.parent_directory_inited:
-            raise CoreNotInitedError("Parent directory is missing") #Exception("Parent directory missing")
+            raise CoreNotInitedError("Parent directory is missing")  # Exception("Parent directory missing")
         self._flush()
 
     def _flush(self):
@@ -379,11 +378,13 @@ class FileDescriptor:
             file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster))
         else:
             start_cluster = self.extend_file(file_size, to_selected_size=False)
-            file_offset_stream = self._data_offsets_stream(self._get_cluster_offset(start_cluster)) # TODO  USE IT YEPTA
+            file_offset_stream = self._data_offsets_stream(
+                self._get_cluster_offset(start_cluster))  # TODO validate this code lately
         self._core_used()
-        for data, offset in zip(data_stream, file_offset_stream):#self._data_offsets_stream()):
+        for data, offset in zip(data_stream, file_offset_stream):  # self._data_offsets_stream()):
             self.core.image_reader.set_data_global(offset, data)
 
+    # noinspection PyUnusedLocal
     def data_stream(self, chunk_size=512):
         self._core_used()
         for cluster_offset in self.core.fat_table.get_file_clusters_offsets_list(self._data_cluster):
@@ -436,7 +437,8 @@ class FileDescriptor:
            //////////////////////////////////////
     """
 
-    def _replace_data_in_write(self, were, data, offset, length, pack):
+    @staticmethod
+    def _replace_data_in_write(were, data, offset, length):
         return were[0: offset] + data + were[offset + length:]
 
     def _write_short_name(self, file_name):
@@ -470,7 +472,8 @@ class FileDescriptor:
                                                 self._read_data(self.entries_data[0], *self._dir.write_time))
         return data.datetime
 
-    def _parse_attributes(self, attr):
+    @staticmethod
+    def _parse_attributes(attr):
         return FileEntryMetaData.DirectoryAttributesGetter(attr, arg_string=True)
 
     def _read_attribute(self):
@@ -499,13 +502,15 @@ class FileDescriptor:
             self._delete_data_clusters(data_cluster)
         return data_cluster
 
-    def _parse_data_cluster(self, data_cluster):
+    @staticmethod
+    def _parse_data_cluster(data_cluster):
         data_cluster_bytes = struct.pack('<i', data_cluster)
         first_cluster_low = data_cluster_bytes[0:2]
         first_cluster_high = data_cluster_bytes[2:]
         return first_cluster_high, first_cluster_low
 
-    def _parse_write_time(self, date_time=None):
+    @staticmethod
+    def _parse_write_time(date_time=None):
         time_converter = FileEntryMetaData.DateTimeGetter(date_time)
         write_date = time_converter.date_bytes
         write_time = time_converter.time_bytes
@@ -517,7 +522,8 @@ class FileDescriptor:
             name_parts.append(self._name_part_to_bytes(name[x: x + 13]))
         return name_parts
 
-    def _name_part_to_bytes(self, name_part):
+    @staticmethod
+    def _name_part_to_bytes(name_part):
         utf_name = name_part.encode("utf-16")
         utf_name = utf_name[2:]  # todo грязный хак , разобраться почему он добавляет два байта говна
         if len(utf_name) < 26:
@@ -525,7 +531,8 @@ class FileDescriptor:
             utf_name = utf_name + b'\xff' * (26 - len(utf_name))
         return utf_name[0:10], utf_name[10:22], utf_name[22:26]
 
-    def _get_parse_mod(self, size):
+    @staticmethod
+    def _get_parse_mod(size):
         mod_parameter = ''
         if size == 1:
             mod_parameter = '<B'
@@ -544,13 +551,14 @@ class FileDescriptor:
         else:
             return were[offset: offset + length]
 
-    def _calc_check_sum(self, name):
+    @staticmethod
+    def _calc_check_sum(name):
         unsigned_char = ctypes.c_ubyte
         check_sum = unsigned_char(0).value
         for x in name:
             if unsigned_char(check_sum & 0x1).value:
                 check_sum = unsigned_char(
-                    0x80 + unsigned_char(check_sum >> 0x1).value + x).value  # truct.unpack('<B',x)[0]
+                    0x80 + unsigned_char(check_sum >> 0x1).value + x).value
             else:
                 check_sum = unsigned_char(unsigned_char(check_sum >> 0x1).value + x).value
         return check_sum

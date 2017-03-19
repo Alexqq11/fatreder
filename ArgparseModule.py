@@ -11,7 +11,8 @@ class ArgsParser:
     def parse(self, args_list):
         return self.parser.parse_args(args_list), args_list[0]
 
-    def get_args_list(self, string):
+    @staticmethod
+    def get_args_list(string):
         return shlex.split(string)
 
     def init_parsers(self):
@@ -31,7 +32,8 @@ class ArgsParser:
                                  help='do not check the image for errors')
         # ls
         parser_ls = subparsers.add_parser("ls", help="ls -h, --help",
-                                          description='ls is a command to print list files in directory in fat reader util')
+                                          description='ls is a command to print list ' +
+                                                      'files in directory in fat reader util')
         parser_ls.add_argument(dest='path', metavar='path', nargs='?')  # * - all ? zero or one
         parser_ls.add_argument('-l', '--long', dest='long', action='store_true',
                                help='print file information in human readable format')
@@ -60,11 +62,12 @@ class ArgsParser:
         parser_md.add_argument(dest='path', metavar='path', nargs=1)  # * - all ? zero or one | number
 
         # pwd
-        parser_pwd = subparsers.add_parser("pwd", help="pwd -h, --help",
-                                           description='pwd is a command to calculate ful path to working directory in image')
+        subparsers.add_parser("pwd", help="pwd -h, --help",
+                              description='pwd is a command to calculate ' +
+                                          'ful path to working directory in image')
         # exit
-        parser_exit = subparsers.add_parser("exit", help="exit -h, --help",
-                                            description='exit from fat reader util')
+        subparsers.add_parser("exit", help="exit -h, --help",
+                              description='exit from fat reader util')
 
         # move
         parser_move = subparsers.add_parser("move", help="move -h, --help",
@@ -98,7 +101,7 @@ class ArgsParser:
         parser_rename.add_argument(dest='path', metavar='path', nargs=2)
         # size
         parser_size = subparsers.add_parser("size", help="size -h, --help",
-                                             description="size is a command to calc file size in image")
+                                            description="size is a command to calc file size in image")
         parser_size.add_argument(dest='path', metavar='path', nargs=1)
         self.parser = parser_program
         self.subparsers = subparsers

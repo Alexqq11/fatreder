@@ -38,12 +38,12 @@ class FatBootSectorStructure:
         self.bpb_total_sectors_16 = None  # 19 2 old sixteen bits field in fat 32 must be zero
         self.bpb_media = None  # 21 1 stand
         self.bpb_fat_size_16 = None  # 22 2 amount fat sectors for one fat12/16 table in fat32 zero watch to fat 32
-        self.bpb_sectors_per_track = None  # 24 2 for interrupt 13 and accses to disks with geometry #old tech
-        self.bpb_number_heads = None  # 26 2 ammount of disk heads
+        self.bpb_sectors_per_track = None  # 24 2 for interrupt 13 and to disks with geometry #old tech
+        self.bpb_number_heads = None  # 26 2 amount of disk heads
         self.bpb_hidden_sectors = None  # 28 4
         self.bpb_total_sectors_32 = None  # 32 4 new 32 bit field sm old 16 bit field
         # there was can been fat12/16 fields but we starting write fat 32 fields
-        self.bpb_fat_size_32 = None  # 36 4 amoun of sectors one fat
+        self.bpb_fat_size_32 = None  # 36 4 amount of sectors one fat
         self.bpb_ext_flags = None  # 40 2
         self.file_system_version = None  # 42 2
         self.bpb_root_cluster = None  # 44 4
@@ -105,11 +105,13 @@ class Asker:
     def __init__(self):
         pass
 
-    def ask_yes_no(self, msg=''):
+    @staticmethod
+    def ask_yes_no(msg=''):
         answer = input("{}\ty/n?\n".format(msg))
         return answer.lower() in ["y", "yes", "yep", "да", "д"]
 
-    def ask_choice_list(self, msg, choices):
+    @staticmethod
+    def ask_choice_list(msg, choices):
         print(msg)
         print(*choices, sep='\n')
         while True:

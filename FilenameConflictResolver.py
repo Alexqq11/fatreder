@@ -16,8 +16,10 @@ class NameConflictResolver:
         new_name_long = self._resolve_long_name(file_name, is_directory, long_names)
         new_short_name = self._resolve_oem_name(new_name_long, short_names)
         return new_name_long, new_short_name
-    def resolve_long_name(self,file_name, is_directory, long_names):
-        return  self._resolve_long_name(file_name, is_directory, long_names)
+
+    def resolve_long_name(self, file_name, is_directory, long_names):
+        return self._resolve_long_name(file_name, is_directory, long_names)
+
     def _resolve_long_name(self, file_name, is_directory, long_names):
         new_name = file_name
         while new_name in long_names:
@@ -135,8 +137,9 @@ class NameConflictResolver:
                 if self._check_name(new_name):
                     return new_name
 
+
 if __name__ == "__main__":
     resolver = NameConflictResolver()
-    print(*resolver.get_new_names("name", False, ["name"],["name", "name(1)"]))
+    print(*resolver.get_new_names("name", False, ["name"], ["name", "name(1)"]))
     print(resolver._resolve_long_name("name", False, ["name", "name(1)", "name(1)(1)", "name(2)"]))
     print(resolver._resolve_long_name("name.pro", False, ["name.pro", "name(1).pro", "name(1)(1).pro", "name(2).pro"]))

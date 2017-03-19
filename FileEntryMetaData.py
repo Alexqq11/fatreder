@@ -205,7 +205,8 @@ class DateTimeFormat:
             self.time = datetime.time(self.hours, self.minutes, self.seconds)
             self.date = datetime.date(self.year, self.month, self.day)
         except Exception:
-            print("entry datetime corrupted, may be you trying parse not a directory cluster, to continue work it was replaced")
+            print("entry datetime corrupted, may be you trying parse not a directory " +
+                  "cluster, to continue work it was replaced")
             if self.month == 0 or self.month > 12:  # exceptions
                 self.month = 1
             if self.day == 0:

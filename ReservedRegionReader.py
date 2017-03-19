@@ -1,6 +1,6 @@
-
 import Structures
 import struct
+
 
 class BootSectorParser(Structures.FatBootSectorStructure):
     def __init__(self, data):
@@ -59,13 +59,13 @@ class BootSectorParser(Structures.FatBootSectorStructure):
 
     @property
     def active_fat(self):
-        return  self._active_fat , self._mirroring
+        return self._active_fat, self._mirroring
 
     def convert_to_int(self, data, size):
         value, *trash = struct.unpack(self._get_parse_mod(size), data)
         return value
 
-    def get_data(self, offset, length, parse = False):
+    def get_data(self, offset, length, parse=False):
         if parse:
             return self.convert_to_int(self._data[offset: offset + length], length)
         else:
@@ -85,15 +85,13 @@ class BootSectorParser(Structures.FatBootSectorStructure):
     def _parse_ext_flags(self):
         data = bin(self.bpb_ext_flags)[2:]
         data = '0' * (16 - len(data)) + data
-        fat_number = int(data[-4:],2)
-        reserved = int(data[-7:-4],2)
-        mirroring = int(data[-8:-7],2)
+        fat_number = int(data[-4:], 2)
+        mirroring = int(data[-8:-7], 2)
         if mirroring == 0:
             self._mirroring = True
         else:
             self._mirroring = False
         self._active_fat = fat_number
-
 
     @property
     def data_clusters_amount(self):
@@ -125,7 +123,7 @@ class BootSectorParser(Structures.FatBootSectorStructure):
 
     @property
     def root_directory_offset(self):
-        return self.calc_cluster_offset(self.bpb_root_cluster)#self._second_cluster_offset
+        return self.calc_cluster_offset(self.bpb_root_cluster)  # self._second_cluster_offset
 
     def calc_cluster_offset(self, cluster_number):
         offset = (cluster_number - 2) * self.bpb_sectors_per_cluster * self.bpb_bytes_per_sector
@@ -136,6 +134,7 @@ class BootSectorParser(Structures.FatBootSectorStructure):
         number = cluster_offset - self.root_directory_offset
         number = number // (self.bpb_sectors_per_cluster * self.bpb_bytes_per_sector) + 2
         return number
+
 
 class BootSectorChecker:
     def __init__(self):

@@ -1,23 +1,18 @@
-import datetime
 import os
-import struct
 import sys
 import unittest
 
-import Core
-import FileEntryMetaData
 import ImageWorker
 import ReservedRegionReader
-from  FatReaderExceptions import *
-import FilenameConflictResolver
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              os.path.pardir))
 
-class ReservedRegionTests(unittest.TestCase):
 
+class ReservedRegionTests(unittest.TestCase):
     def test_bpb_table_worker(self):
         reader = ImageWorker.ImageReader("./bpb_table")
-        sector_parsed = ReservedRegionReader.BootSectorParser(reader.get_data_global(0,100))
+        sector_parsed = ReservedRegionReader.BootSectorParser(reader.get_data_global(0, 100))
 
         with self.subTest("correct_cluster_count_number"):
             self.assertTrue(sector_parsed.calc_cluster_number(sector_parsed.root_directory_offset) == 2)

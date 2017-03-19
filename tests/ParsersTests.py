@@ -6,10 +6,7 @@ import unittest
 
 import Core
 import FileEntryMetaData
-import ImageWorker
-import ReservedRegionReader
-from  FatReaderExceptions import *
-import FilenameConflictResolver
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              os.path.pardir))
 
@@ -193,9 +190,7 @@ class FatTablesReadersTests(unittest.TestCase):
         with self.subTest("test_correct_ldir_number"):
             self.assertTrue(entry2[0:1] == b'\x04')
     """
-    def test_conflict_name_resolver(self):
-        resolver  = FilenameConflictResolver.NameConflictResolver()
-        #resolver.get_new_names("name", False,["name")
+
     def test_time_parsers(self):
         control_time = datetime.datetime.now()
         time_converter = FileEntryMetaData.DateTimeGetter(control_time)
@@ -211,9 +206,6 @@ class FatTablesReadersTests(unittest.TestCase):
                         and d1.minute == d2.minute
                         and d1.second + 2 > d2.second
                         and d1.second - 2 < d2.second)
-
-
-
 
     """
     def test_delete_primitive(self):
@@ -326,6 +318,7 @@ class FatTablesReadersTests(unittest.TestCase):
                                                   dump_data_before[iter])
                 iter += 1
     """
+
     def test_file_system_walker(self):
         core = Core.Core()
         core.init("./test3.img")

@@ -2,19 +2,15 @@ import operator
 import sys
 
 import ArgparseModule
-#import FatTableReader as Ftw
+import FatTableReader as Ftw
 import FileSystemUtils as Fsw
 import ImageWorker as Image
 import ReservedRegionReader as Rrr
-from  FatReaderExceptions import *
-import ImageCheckerUtils
-import FatTableReader as Ftw
 import Structures
+from FatReaderExceptions import *
 
 
-
-
-class CommandExecutor():
+class CommandExecutor:
     def __init__(self, core):
         self.commands = ("load", "ls", "cp", "cd", "md", "pwd", "cat", "rm", "move", "rmdir", "exit", "rename", "size")
         self.utils = core.file_system_utils
@@ -83,10 +79,6 @@ class CommandExecutor():
     def exit(self):
         self.core.keep_alive = False
 
-    def NoneArgumentPath(self):
-        if self.args.path == None:
-            self.args.path = []
-
 
 class Core(Structures.Asker):
     def __init__(self, debug=True):
@@ -94,7 +86,7 @@ class Core(Structures.Asker):
         self.image_reader = None
         self.fat_boot_sector = None
         self.fat_table = None
-        #self.dir_parser = None
+        # self.dir_parser = None
         self.file_system_utils = None
         self.rrp = None
         self.args_parser = ArgparseModule.ArgsParser()
@@ -104,6 +96,7 @@ class Core(Structures.Asker):
         self.image_loaded = False
         if not debug:
             self.run()
+
     def run(self):
         if len(sys.argv) > 1:
             print(sys.argv)
@@ -129,8 +122,9 @@ class Core(Structures.Asker):
         self.close_reader()
 
     def argument_handler(self, args=None):
-        if args == None:
-            args, command = self.args_parser.parse(sys.argv)
+        if args is None:
+            if args.path is None:
+                args, command = self.args_parser.parse(sys.argv)
             self.keep_alive = args.keep_alive
             self.scan_disk = not args.noscan
             if args.load:
@@ -176,14 +170,14 @@ class Core(Structures.Asker):
     def _init_fat_tripper(self):
         self.fat_table = Ftw.FatTablesManager(self)
 
-    def init_FSW(self):
+    def init_file_system_utils(self):
         self.file_system_utils = Fsw.FatReaderUtils(self)
 
     def init(self, path):
         self._init_image(path)
-        #self._init_fat_boot_sector()
+        # self._init_fat_boot_sector()
         self._init_fat_tripper()
-        self.init_FSW()
+        self.init_file_system_utils()
         self.image_loaded = True
 
     def close_reader(self):

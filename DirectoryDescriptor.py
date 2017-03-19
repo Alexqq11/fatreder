@@ -242,11 +242,11 @@ class DirectoryDescriptor:
 
     def _init_search_dict(self):
         self.searching_dict = {"by_address": lambda value, iterable: value == iterable.data_cluster,
-                               'by_name_dir': lambda value, iterable: iterable.is_correct_name(value) and
-                                                                      iterable.attributes.directory,
+                               'by_name_dir': lambda value, iterable:
+                               iterable.is_correct_name(value) and iterable.attributes.directory,
                                'by_name': lambda value, iterable: iterable.is_correct_name(value),
-                               'by_name_file': lambda value, iterable: iterable.is_correct_name(value) and
-                                                                       not iterable.attributes.directory}
+                               'by_name_file': lambda value, iterable:
+                               iterable.is_correct_name(value) and not iterable.attributes.directory}
 
     def _init_files(self, file_entries_list):
         self._init_search_dict()

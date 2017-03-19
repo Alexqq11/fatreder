@@ -79,7 +79,7 @@ class PathObject:
     def raw_path_start_directory(self):
         """
         in case raw_way = canonical will be returned last file descriptor
-        you can make comand back forward
+        you can make command back forward
         """
         return self._raw_path_descriptor
 
@@ -108,7 +108,8 @@ class FileSystemUtilsLowLevel:
         for num, way_elem in enumerate(path_parts):
             track_num = num
             if way_elem == '' and intermediate_directory is None:
-                intermediate_directory = self.parse_directory_descriptor(self.core.fat_boot_sector.root_directory_cluster)
+                intermediate_directory = self.parse_directory_descriptor(
+                    self.core.fat_boot_sector.root_directory_cluster)
             elif not (way_elem == '.' or (way_elem == '..' and (
                     intermediate_directory.is_root if intermediate_directory else working_directory.is_root))):
                 if intermediate_directory is None:
@@ -150,7 +151,8 @@ class FileSystemUtilsLowLevel:
             path_exist = True
             tail_file_descriptor = directory
             head, tail = posixpath.split(canonical_path)
-            head_file_descriptor, _, _ = self.get_directory_descriptor(head, self.parse_directory_descriptor(self.core.fat_boot_sector.root_directory_cluster))
+            head_file_descriptor, _, _ = self.get_directory_descriptor(head, self.parse_directory_descriptor(
+                self.core.fat_boot_sector.root_directory_cluster))
         else:
             head, tail = posixpath.split(path)
             directory, parent_directory_exist, _ = self.get_directory_descriptor(head, working_directory)

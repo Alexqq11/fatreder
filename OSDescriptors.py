@@ -30,7 +30,7 @@ class FileDescriptor:  # todo think about use __slots__
     def file_path(self):
         return self._file_path
 
-    def data_stream(self, chunk_size = 512):
+    def data_stream(self, chunk_size=512):
         if not self._exist or self._directory:
             raise Exception("try to accesses not file object data")
         f = open(self._file_path, "rb")
@@ -50,10 +50,10 @@ class FileDescriptor:  # todo think about use __slots__
 
     def create_in_os(self, is_dir=False):
         if is_dir:
-            #try:
+            # try:
             os.makedirs(self._file_path)
-            #except:
-             #   pass
+            # except:
+            #   pass
         else:
             try:
                 os.makedirs(self._parent_directory_path)
@@ -145,6 +145,7 @@ class DirectoryDescriptor:
             size = file_descriptor.calculate_size_on_disk()
             descriptor.write_data_into_file(size, file_descriptor.data_stream())
 
+
 class PathObject:
     def __init__(self, path):
         path = os.path.normpath(path)
@@ -153,11 +154,12 @@ class PathObject:
         self._exist = os.path.exists(path)
         self._directory = os.path.isdir(path) if self._exist else None
         self._file = not self._directory if self._directory is not None else None
-        self._head , self._tail = os.path.split(path)
+        self._head, self._tail = os.path.split(path)
 
     @property
     def file_fs_descriptor(self):
-            return FileDescriptor(self._path)
+        return FileDescriptor(self._path)
+
     @property
     def is_exist(self):
         return self._exist
@@ -169,9 +171,11 @@ class PathObject:
     @property
     def is_file(self):
         return self._file
+
     @property
     def path_descriptor(self):
         return DirectoryDescriptor(self.path) if self._directory else FileDescriptor(self.path)
+
     @property
     def file_directory_path(self):
         return self._head
@@ -194,7 +198,7 @@ class PathObject:
             else:
                 head, tail = os.path.split(self.path)
                 os.makedirs(head)
-                f = open(tail,"xb")
+                f = open(tail, "xb")
                 f.close()
                 self._exist = True
                 self._directory = False
