@@ -19,6 +19,13 @@ class FatTablesManager(Structures.Asker):
             self._fats = [FatTable(core, offset) for offset in self._fats_offsets]
             self.check_fats()
 
+    #needs for tests
+    def set_cluster_entry(self, cluster_number, value = 268435448):
+        self._main_fat[cluster_number] = value
+    def get_file_clusters_list(self, cluster):
+        return list(self._main_fat.file_clusters_stream(cluster))
+    def find_empty_entries(self, amount):
+        return self._main_fat.find_empty_clusters(amount)
     def allocate_place(self, amount_of_clusters):
         value = self._main_fat.allocate_place(amount_of_clusters)
         self.flush()
@@ -85,18 +92,24 @@ class FatTable:
     def get_file_clusters_offsets_list(self, cluster):
         return [self._core.fat_boot_sector.calc_cluster_offset(cls) for cls in self.file_clusters_stream(cluster)]
 
-    def file_clusters_stream(self, cluster):
-        yield cluster
-        while self[cluster] != 268435448:
-            cluster = self[cluster]
-            if cluster  >= 268435448:
-                break
-            yield cluster
+    def file_clusters_stream(self, cluster_number):
+        while cluster_number < 268435448:
+            yield cluster_number
+            cluster_number = self[cluster_number]
+
 
 
     def allocate_place(self, amount_of_clusters):
-        empty_clusters = self.find_empty_clusters(1)  # empty_entry is list
-        self.extend_place(empty_clusters[0], amount_of_clusters - 1)
+        empty_clusters = self.find_empty_clusters(1)
+        if self[empty_clusters[0]] == 0:
+            self[empty_clusters[0]] = 268435448
+        else:
+            raise UnExpectedCriticalError("be shure it never happens founded shredinger cluster")
+        try:
+            self.extend_place(empty_clusters[0], amount_of_clusters - 1)
+        except AllocationMemoryOutException:
+            self[empty_clusters[0]] = 0
+            raise  AllocationMemoryOutException
         return empty_clusters[0]
 
     def extend_file(self, file_start_cluster, amount_of_clusters):  # now it works correctly with any cluster of file
@@ -138,14 +151,13 @@ class FatTable:
             else:
                 break
         if len(clusters_list) < amount_of_clusters:
-            raise AllocationMemoryOutException
+            raise AllocationMemoryOutException()
         return clusters_list
 
     def free_clusters_stream(self):
-        for cluster in self:
-            if cluster < 268435448:
-                if self[cluster] == 0:
-                    yield cluster
+        for cluster_number , cluster_value in self:
+            if cluster_value == 0:
+                yield cluster_number
 
     def get_raw_data(self):
         return b"".join(self._byte_data)
@@ -155,13 +167,13 @@ class FatTable:
             value, *trash = struct.unpack('<I', self._byte_data[item])
             return value
         else:
-            raise IndexError("Index must be less than 1")
+            raise IndexError("Index must be more than 1")
 
     def __iter__(self):
-        for x in self._byte_data:
-            value, *trash = struct.unpack('<I', x)
-            if value > 1:
-                yield value
+        for cluster_number, cluster_value in enumerate(self._byte_data):
+            value, *trash = struct.unpack('<I', cluster_value)
+            if cluster_number > 1:
+                yield (cluster_number, value)
 
     def __len__(self):
         return self._max_allocation
@@ -180,3 +192,4 @@ class FatTable:
         for offset in offsets:
             if offset != self._offset or flush_self:
                 self._core.image_reader.set_data_global(offset, b''.join(self._byte_data))
+

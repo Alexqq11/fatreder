@@ -431,11 +431,8 @@ class FileDescriptor:
                 pass
         else:
             self._core_used()
-            last, status = self.core.fat_table.extend_file(self._data_cluster, extend_size)
-            if not status:
-                raise AllocationMemoryOutException("No  memory to allocation")
-            else:
-                return last
+            last = self.core.fat_table.extend_file(self._data_cluster, extend_size)
+            return last
 
     """
            //////////////////////////////////////
@@ -502,12 +499,9 @@ class FileDescriptor:
         if clusters_amount == 0:
             raise ZeroSizeAllocationException()
         self._core_used()
-        data_cluster, operation_status = self.core.fat_table.allocate_place(clusters_amount)
-        if operation_status:
-            if clear_allocated_area:
-                self._delete_data_clusters(data_cluster)
-        else:
-            raise AllocationMemoryOutException()
+        data_cluster = self.core.fat_table.allocate_place(clusters_amount)
+        if clear_allocated_area:
+            self._delete_data_clusters(data_cluster)
         return data_cluster
 
     def _parse_data_cluster(self, data_cluster):

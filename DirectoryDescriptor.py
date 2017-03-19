@@ -1,7 +1,7 @@
-from FatReaderExceptions import *
 import FileDescriptor
 import FilenameConflictResolver
 import OSDescriptors
+from FatReaderExceptions import *
 
 
 class DirectoryDescriptor:
@@ -108,9 +108,7 @@ class DirectoryDescriptor:
         return size
 
     def _extend_directory(self):
-        cluster, status = self.core.fat_table.extend_file(self.data_cluster, self._default_cluster_allocation_size)
-        if not status:
-            raise AllocationMemoryOutException()
+        cluster = self.core.fat_table.extend_file(self.data_cluster, self._default_cluster_allocation_size)
         self._note_allocated_place(cluster)
 
     def _note_allocated_place(self, cluster):
@@ -272,16 +270,16 @@ class DirectoryDescriptor:
             else:
                 # check cluster number ? it will be helpful to find type of error
                 raise UnExpectedParsingError("Unexpected error: check cluster number what you trying to parse,\n" +
-                                             "this directory doesn't contains parent or self directory link,\n"+
-                                             "this is not root entry or root entry with corrupted id,\n "+
-                                             "this directory contains another files descriptors\n"+
-                                             "you can try to use special util to restore this directory\n"+
+                                             "this directory doesn't contains parent or self directory link,\n" +
+                                             "this is not root entry or root entry with corrupted id,\n " +
+                                             "this directory contains another files descriptors\n" +
+                                             "you can try to use special util to restore this directory\n" +
                                              "but you do at your own risk\n")
         else:
             raise UnExpectedParsingError("Unexpected error: check cluster number what you trying to parse,\n" +
-                                         "this directory doesn't contains parent or self directory link,\n"+
-                                         "this directory doesn't contains any files descriptors\n"+
-                                         "you can try to use special util to restore this directory\n"+
+                                         "this directory doesn't contains parent or self directory link,\n" +
+                                         "this directory doesn't contains any files descriptors\n" +
+                                         "you can try to use special util to restore this directory\n" +
                                          "but you do at your own risk\n")
             pass
 

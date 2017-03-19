@@ -1,4 +1,4 @@
-import ImageWorker
+
 import Structures
 import struct
 

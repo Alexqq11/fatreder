@@ -174,7 +174,7 @@ class Core(Structures.Asker):
             self.fat_boot_sector = Rrr.BootSectorParser(data)  # fat.FatBootSector(self.image_reader)
 
     def _init_fat_tripper(self):
-        self.fat_table = Ftw.FatTablesManager(self, self.fat_boot_sector.fat_offsets_list)
+        self.fat_table = Ftw.FatTablesManager(self, False)
 
     def init_FSW(self):
         self.file_system_utils = Fsw.FatReaderUtils(self)
