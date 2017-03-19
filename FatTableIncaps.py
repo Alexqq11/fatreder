@@ -22,6 +22,7 @@ class FatTablesManager(Structures.Asker):
     #needs for tests
     def set_cluster_entry(self, cluster_number, value = 268435448):
         self._main_fat[cluster_number] = value
+        self.flush()
     def get_file_clusters_list(self, cluster):
         return list(self._main_fat.file_clusters_stream(cluster))
     def find_empty_entries(self, amount):
