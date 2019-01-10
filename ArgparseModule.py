@@ -46,10 +46,10 @@ class ArgsParser:
         parser_cp = subparsers.add_parser("cp", help="cp -h, --help",
                                           description='cp is a command to copy files or directories from/on/in image')
         parser_cp.add_argument(dest='path', metavar='path', nargs=2)  # * - all ? zero or one
-        parser_cp.add_argument('-e', '--external', dest='external', action='store_true',
-                               help='copy file or directory from os to image')
-        parser_cp.add_argument('-i', '--internal', dest='internal', action='store_true',
+        parser_cp.add_argument('-e', '-е','--export', dest='export', action='store_true',
                                help='copy file or directory from image to os')
+        parser_cp.add_argument('-i', '--import', dest='import_file', action='store_true',
+                               help='copy file or directory from os to image')
 
         # cd
         parser_cd = subparsers.add_parser("cd", help="cd -h, --help",

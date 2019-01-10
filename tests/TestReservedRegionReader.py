@@ -35,3 +35,33 @@ class ReservedRegionTests(unittest.TestCase):
 
         with self.subTest("correct_fat_size"):
             self.assertTrue(sector_parsed.root_directory_offset == 4194304)
+
+class TestStructures(unittest.TestCase):
+    def test_structures(self):
+        import Structures
+        with self.subTest("ShortDirectoryEntryStructure"):
+            dirs = Structures.ShortDirectoryEntryStructure()
+            self.assertTrue(dirs is not None)
+
+        with self.subTest("FSInfoStructure"):
+            dirs = Structures.FSInfoStructure()
+            self.assertTrue(dirs is not None)
+
+        with self.subTest("FatBootSectorStructure"):
+            dirs = Structures.FatBootSectorStructure()
+            self.assertTrue(dirs is not None)
+
+        with self.subTest("BootSectorOffsets"):
+            dirs = Structures.BootSectorOffsets()
+            self.assertTrue(dirs is not None)
+
+        with self.subTest("DirectoryAttributesStructure"):
+            dirs = Structures.DirectoryAttributesStructure()
+            self.assertTrue(dirs is not None)
+
+
+
+
+
+
+

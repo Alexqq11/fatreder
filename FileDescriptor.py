@@ -438,7 +438,7 @@ class FileDescriptor:
     """
 
     @staticmethod
-    def _replace_data_in_write(were, data, offset, length):
+    def _replace_data_in_write(were, data, offset, length, dir_bool_value=None):
         return were[0: offset] + data + were[offset + length:]
 
     def _write_short_name(self, file_name):

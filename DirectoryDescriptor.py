@@ -112,7 +112,7 @@ class DirectoryDescriptor:
         self._note_allocated_place(cluster)
 
     def _note_allocated_place(self, cluster):
-        extended_clusters_offsets = self.core.fat_table.get_clusters_offsets_list(cluster)
+        extended_clusters_offsets = self.core.fat_table.get_file_clusters_offsets_list(cluster)
         for offset in extended_clusters_offsets:
             self._writes_place += [(True, offset + x) for x in range(0, self._cluster_size, 32)]
         self._free_entries_amount += self._cluster_size // 32 * len(extended_clusters_offsets)
@@ -198,11 +198,11 @@ class DirectoryDescriptor:
                 file_descriptor.data_cluster)
         else:
             from_directory = OSDescriptors.DirectoryDescriptor(file_descriptor.file_path)
-        return to_directory, from_directory
+        return  from_directory, to_directory
 
     def copy(self, file_descriptor: FileDescriptor.FileDescriptor, is_image_descriptor=True):
         if file_descriptor.directory:
-            to_directory, from_directory = self.parse_descriptors(file_descriptor, is_image_descriptor)
+            from_directory, to_directory,  = self.parse_descriptors(file_descriptor, is_image_descriptor)
             for descriptor in from_directory.entries():
                 to_directory.copy(descriptor, is_image_descriptor)
         else:

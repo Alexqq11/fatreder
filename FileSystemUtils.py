@@ -22,7 +22,7 @@ class RemoveUtils:
     def working_directory(self, value):
         self.fat_reader_utils.working_directory = value
 
-    def free_space_avalible(self, path, is_image=True):
+    def free_space_avalible(self, path, is_image=True):# TODO BAD DECOMPOSITION IT MAST BE IN PATH OBJECTS METHOODS
         if is_image:
             return self.core.fat_table.calculate_free_space()
         else:
@@ -51,23 +51,24 @@ class RemoveUtils:
         path_obj.parent_descriptor.rename_file(path_obj.file_name, new_name)
         self.refresh()
 
-    def copy(self, path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject,
-             is_image_descriptor=None):
-        if is_image_descriptor is None:
+    def copy(self, path_obj_from: FileSystemUtilsLowLevel.PathObject, path_obj_to: FileSystemUtilsLowLevel.PathObject,
+             is_source_image_descriptor=None):
+        if is_source_image_descriptor is None:
             raise UnExpectedCriticalError("Working option not validated")
 
-        size_to_copy = path_obj_from.file_fs_descriptor.calculate_size_on_disk()
-        if is_image_descriptor:
+        size_to_copy = path_obj_from.file_fs_descriptor.calculate_size_on_disk()#todo check duck typing
+        if isinstance(path_obj_to, OSDescriptors.PathObject):
             free_space = self.free_space_avalible(path_obj_to.file_directory_path, is_image=False)
         else:
             free_space = self.free_space_avalible(path_obj_to.file_directory_path)
+
         if free_space < size_to_copy:
             raise AllocationMemoryOutException("No enough free space avalible in the cp destination place")
 
-        path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor, is_image_descriptor)
+        path_obj_to.path_descriptor.copy(path_obj_from.file_fs_descriptor, is_source_image_descriptor, )
 
     @staticmethod
-    def move(path_obj_to: FileSystemUtilsLowLevel.PathObject, path_obj_from: FileSystemUtilsLowLevel.PathObject):
+    def move(path_obj_from: FileSystemUtilsLowLevel.PathObject, path_obj_to: FileSystemUtilsLowLevel.PathObject):
         path_obj_to.path_descriptor.move(path_obj_from.file_fs_descriptor)
 
     def refresh(self):
@@ -145,7 +146,7 @@ class FileSystemUtils:
 
     @staticmethod
     def size(path_obj: FileSystemUtilsLowLevel.PathObject):
-        print(path_obj.file_fs_descriptor.calculate_size_on_disk())
+        return path_obj.file_fs_descriptor.calculate_size_on_disk()
 
 
 class FatReaderUtils:
@@ -174,7 +175,7 @@ class FatReaderUtils:
         if not path_obj.is_exist and not (not path_obj.is_file and path_obj.parent_exist):
             raise InvalidPathException()
         for data in self.file_system_utils.ls(path_obj, long, all_files, recursive):
-            print(data)
+            yield data
         pass
 
     def cp(self, path_from, path_to):  # todo check_sub_dir
@@ -182,31 +183,31 @@ class FatReaderUtils:
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
-        self.remove_utils.copy(path_obj_to, path_obj_from, is_image_descriptor=True)
+        self.remove_utils.copy(path_obj_from, path_obj_to, is_source_image_descriptor=True)
         pass
 
     def size(self, path):
         path_obj_to = self.low_level_utils.path_parser(path, self.working_directory)
         if not path_obj_to.is_exist:
             raise InvalidPathException()
-        self.file_system_utils.size(path_obj_to)
+        return self.file_system_utils.size(path_obj_to)
 
-    def cpf(self, path_from_os, path_to):
+    def cp_import(self, path_from_os, path_to):
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         path_obj_from = OSDescriptors.PathObject(path_from_os)
         if path_obj_to.is_file or not path_obj_from.is_exist:
             raise InvalidPathException()
-        self.remove_utils.copy(path_obj_to, path_obj_from, is_image_descriptor=False)
+        self.remove_utils.copy(path_obj_from, path_obj_to, is_source_image_descriptor=False)
         # self.copy_utils.copy_from_os(path_from_os, path_obj_to)
 
-    def cpt(self, path_from, path_to_os):
+    def cp_export(self, path_from, path_to_os):
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         path_obj_to = OSDescriptors.PathObject(path_to_os)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException()
         if not path_obj_to.is_exist:
             path_obj_to.create()
-        self.remove_utils.copy(path_obj_to, path_obj_from, is_image_descriptor=True)
+        self.remove_utils.copy(path_obj_from, path_obj_to, is_source_image_descriptor=True)
         # self.copy_utils.copy_to_os(path_obj_from, path_to_os)
         pass
 
@@ -226,6 +227,7 @@ class FatReaderUtils:
         if path_obj.is_file:
             raise InvalidPathException("Use rm to delete that file")
         self.remove_utils.delete(path_obj)
+        self.refresh()
         pass
 
     def cat(self, path, byte=False, text=True, encoding="cp866"):
@@ -235,7 +237,7 @@ class FatReaderUtils:
         if path_obj.is_directory:
             raise InvalidPathException("You can't read directory content by cat, use ls")
         for data in self.file_system_utils.cat_data(path_obj, byte, ):
-            print(data)
+            yield data
         pass
 
     def cd(self, path):
@@ -251,16 +253,18 @@ class FatReaderUtils:
         if path_obj.is_exist:
             raise FileAlreadyExistException()
         self.file_system_utils.new_directories(path_obj)
+        self.refresh()
 
     def pwd(self):
-        print(self.file_system_utils.calculate_directory_path())
+        return self.file_system_utils.calculate_directory_path()
 
-    def move(self, path_to, path_from):  # todo check sub_dir
+    def move(self, path_from, path_to):  # todo check sub_dir
         path_obj_from = self.low_level_utils.path_parser(path_from, self.working_directory)
         path_obj_to = self.low_level_utils.path_parser(path_to, self.working_directory)
         if not path_obj_from.is_exist or path_obj_to.is_file:
             raise InvalidPathException("You trying move not exist directory or move file/directory into existing file")
-        self.remove_utils.move(path_obj_to, path_obj_from)
+        self.remove_utils.move(path_obj_from, path_obj_to)
+        self.refresh()
 
     def rename(self, path, name):
         path_obj_from = self.low_level_utils.path_parser(path, self.working_directory)
@@ -269,6 +273,7 @@ class FatReaderUtils:
             raise InvalidPathException(
                 "Yoy trying rename not existing object or trying to use uncorrect or existing filename ")
         self.remove_utils.rename(path_obj_from, name)
+        self.refresh()
 
     def refresh(self):
         self.working_directory = self.low_level_utils.parse_directory_descriptor(self.working_directory.data_cluster)

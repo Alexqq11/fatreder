@@ -104,10 +104,12 @@ class DirectoryAttributesStructure:
 class Asker:
     def __init__(self):
         pass
-
+    @staticmethod
+    def _input(msg = ''):
+        return input(msg)
     @staticmethod
     def ask_yes_no(msg=''):
-        answer = input("{}\ty/n?\n".format(msg))
+        answer = Asker._input("{}\ty/n?\n".format(msg))
         return answer.lower() in ["y", "yes", "yep", "да", "д"]
 
     @staticmethod
@@ -115,7 +117,7 @@ class Asker:
         print(msg)
         print(*choices, sep='\n')
         while True:
-            answer = input("select {}..{} topics\n".format(0, len(choices) - 1))
+            answer = Asker._input("select {}..{} topics\n".format(0, len(choices) - 1))
             if int(answer) in list(range(0, len(choices))):
                 return answer
             else:

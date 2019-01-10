@@ -133,11 +133,11 @@ class DirectoryDescriptor:
                 file_descriptor.data_cluster)
         else:
             from_directory = DirectoryDescriptor(file_descriptor.file_path)
-        return to_directory, from_directory
+        return from_directory, to_directory
 
     def copy(self, file_descriptor, is_image_descriptor=False):
         if file_descriptor.directory:
-            to_directory, from_directory = self.parse_descriptors(file_descriptor, is_image_descriptor)
+            from_directory, to_directory  = self.parse_descriptors(file_descriptor, is_image_descriptor)
             for descriptor in from_directory.entries():
                 to_directory.copy(descriptor, is_image_descriptor)
         else:
